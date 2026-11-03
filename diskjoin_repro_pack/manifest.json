@@ -1,0 +1,16 @@
+{
+  "project": "DiskJoin single-machine minimal reproduction pack",
+  "created_on": "2026-11-02",
+  "target_venue": "PACMMOD 3(6) (SIGMOD 2026)",
+  "formal_doi": "10.1145/3769780",
+  "arxiv": "2508.18494v2",
+  "reference_repo": "https://github.com/iidyc/DiskJoin",
+  "reference_commit": "aa86151f97527b1dcf9a032d523c1d67d892454a",
+  "reference_repo_embedded": false,
+  "paper_pdf_embedded": false,
+  "external_sources_script": "scripts/fetch_sources.sh",
+  "reference_binary_compiled": false,
+  "offline_toy_tested": true,
+  "claims": "Local stdlib checks tested; upstream C++ requires network and remote Linux runtime.",
+  "license_caveat": "GitHub repo root lacked LICENSE; reference code acquired separately by end user. arXiv v2 CC BY-NC-ND 4.0."
+}

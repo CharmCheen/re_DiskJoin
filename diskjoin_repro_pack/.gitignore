@@ -1,0 +1,5 @@
+workspace/
+__pycache__/
+*.pyc
+reference/DiskJoin/
+paper/*.pdf
