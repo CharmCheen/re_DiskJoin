@@ -1,0 +1,19 @@
+test_last_four_dimensions_calib_and_gt (test_correctness.OracleTests.test_last_four_dimensions_calib_and_gt) ... ok
+test_random_cross_implementation (test_correctness.OracleTests.test_random_cross_implementation) ... ok
+test_reject_bad_inputs_and_overwrite (test_correctness.OracleTests.test_reject_bad_inputs_and_overwrite) ... ok
+test_disjoint_reproducible_split (test_correctness.StatisticsTests.test_disjoint_reproducible_split) ... ok
+test_pair_validation_includes_empty_gt_fp (test_correctness.StatisticsTests.test_pair_validation_includes_empty_gt_fp) ... ok
+test_undefined_and_degenerate_intervals (test_correctness.StatisticsTests.test_undefined_and_degenerate_intervals) ... ok
+test_weighted_mean_precision_and_empty_endpoint (test_correctness.StatisticsTests.test_weighted_mean_precision_and_empty_endpoint) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.381s
+
+OK
+AST/Bash/prefetch checks PASS; 2071 prior files unchanged
+/Users/charmcheen/FDU/re_DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/lib/hnswlib/hnswalg.h:1270:16: runtime error: store to misaligned address 0x00010063caa4 for type 'labeltype *' (aka 'unsigned long *'), which requires 8 byte alignment
+0x00010063caa4: note: pointer points here
+  00 00 00 00 00 00 00 00  00 00 00 00 be be be be  be be be be be be be be  be be be be be be be be
+              ^ 
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /Users/charmcheen/FDU/re_DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/lib/hnswlib/hnswalg.h:1270:16 
+workspace/gate5ar/scripts/run_local.sh: line 13: 56769 Abort trap: 6           "$ROOT/build/hnsw_scalar_sanitized"

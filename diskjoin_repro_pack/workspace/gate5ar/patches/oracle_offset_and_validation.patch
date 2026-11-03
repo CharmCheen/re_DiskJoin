@@ -1,0 +1,261 @@
+diff --git a/oracle/gt_calib.cpp b/oracle/gt_calib.cpp
+--- a/oracle/gt_calib.cpp
++++ b/oracle/gt_calib.cpp
+@@ -1,141 +1,131 @@
+-// Gate 5A: exact integer calibration + brute-force GT for BigANN100K.
+-//
+-// Standalone helper (new isolated tool, NOT part of the DiskJoin source).
+-// All distance computations are EXACT integer arithmetic:
+-//   data are uint8 in [0,255]^128 -> per-dim |diff| <= 255, diff^2 <= 65025,
+-//   sum over 128 dims <= 8,323,200 < 2^31 -> int32 is exact, no rounding.
+-// The join binary compares dist < (float)sqrt(radius)^2; with radius = m^2
+-// (m <= 4095) and integer data, the float32 chain is exact as well, so the
+-// GT here uses the identical strict '<' on the identical integer values.
+-//
+-// Modes:
+-//   calib <bvecs> <ids_file>
+-//     For each candidate m: per-sample neighbour counts (excluding self)
+-//     -> mean / median / min / max / frac_empty, plus |N(0)| when vector 0
+-//        is in the id list. Single pass, per-sample counts for a fixed
+-//        candidate list (see CAND list below).
+-//   gt <bvecs> <endpoints_file> <m> <out_file>
+-//     For each endpoint e: all j != e with d2(e,j) < m*m, written as
+-//     "e k id1 id2 ...". Endpoint 0 gives the config `gt` value.
+-//
+-// Build: g++ -O2 -fopenmp -o gt_calib gt_calib.cpp
+-// Run with OMP_NUM_THREADS<=4.
++// Exact BigANN oracle. Record headers are consumed by the loader, never d2().
++#include <algorithm>
++#include <cstdint>
++#include <cstdio>
++#include <fstream>
++#include <iostream>
++#include <set>
++#include <sstream>
++#include <stdexcept>
++#include <string>
++#include <vector>
+ 
+-#include <cstdio>
+-#include <cstdlib>
+-#include <cstring>
+-#include <cstdint>
+-#include <algorithm>
+-#include <vector>
+-#include <string>
++struct Dataset {
++    static const size_t d = 128;
++    std::vector<uint8_t> values;
++    size_t n() const { return values.size() / d; }
++    const uint8_t* row(size_t i) const { return values.data() + i * d; }
++};
+ 
+-static const size_t N = 100000, D = 128, REC = 4 + D;
+-
+-static void load_bvecs(const char* fn, std::vector<uint8_t>& X) {
+-    FILE* f = fopen(fn, "rb");
+-    if (!f) { fprintf(stderr, "cannot open %s\n", fn); exit(1); }
+-    X.resize(N * REC);
+-    if (fread(X.data(), 1, N * REC, f) != N * REC) {
+-        fprintf(stderr, "short read on %s\n", fn); exit(1);
++static Dataset load(const char* path) {
++    std::ifstream in(path, std::ios::binary);
++    if (!in) throw std::runtime_error("cannot open bvecs");
++    Dataset x;
++    while (true) {
++        unsigned char h[4];
++        in.read(reinterpret_cast<char*>(h), 4);
++        if (in.gcount() == 0 && in.eof()) break;
++        if (in.gcount() != 4) throw std::runtime_error("truncated header");
++        uint32_t d = uint32_t(h[0]) | uint32_t(h[1]) << 8 |
++                     uint32_t(h[2]) << 16 | uint32_t(h[3]) << 24;
++        if (d != Dataset::d) throw std::runtime_error("expected dimension 128");
++        uint8_t row[Dataset::d];
++        in.read(reinterpret_cast<char*>(row), Dataset::d);
++        if (in.gcount() != Dataset::d) throw std::runtime_error("truncated vector");
++        x.values.insert(x.values.end(), row, row + Dataset::d);
++        if (x.n() > 100000) throw std::runtime_error("bounded oracle: n > 100000");
+     }
+-    fclose(f);
+-    for (size_t i = 0; i < N; i++) {
+-        uint32_t h; memcpy(&h, &X[i * REC], 4);
+-        if (h != D) { fprintf(stderr, "bad header at %zu: %u\n", i, h); exit(1); }
+-    }
++    if (!x.n()) throw std::runtime_error("empty dataset");
++    return x;
+ }
+ 
+-static inline int32_t d2(const uint8_t* a, const uint8_t* b) {
+-    int32_t s = 0;
+-    for (size_t k = 0; k < D; k++) {
+-        int32_t df = (int32_t)a[k] - (int32_t)b[k];
+-        s += df * df;
++static int32_t d2(const uint8_t* a, const uint8_t* b) {
++    int32_t sum = 0;
++    for (size_t k = 0; k < Dataset::d; ++k) {
++        int32_t delta = int32_t(a[k]) - int32_t(b[k]);
++        sum += delta * delta;
+     }
+-    return s;
++    return sum;
+ }
+ 
+-static std::vector<size_t> read_ids(const char* fn) {
+-    FILE* f = fopen(fn, "r");
+-    if (!f) { fprintf(stderr, "cannot open %s\n", fn); exit(1); }
+-    std::vector<size_t> ids; long v; 
+-    while (fscanf(f, "%ld", &v) == 1) ids.push_back((size_t)v);
+-    fclose(f);
++static std::vector<size_t> read_ids(const char* path, size_t n) {
++    std::ifstream in(path);
++    if (!in) throw std::runtime_error("cannot open ids");
++    std::vector<size_t> ids;
++    std::set<size_t> seen;
++    std::string line;
++    while (std::getline(in, line)) {
++        if (line.empty() || line[0] == '#') continue;
++        std::istringstream ss(line);
++        long long v; std::string extra;
++        if (!(ss >> v) || (ss >> extra) || v < 0 || size_t(v) >= n ||
++            !seen.insert(size_t(v)).second) throw std::runtime_error("invalid/duplicate id");
++        ids.push_back(size_t(v));
++    }
++    if (ids.empty()) throw std::runtime_error("empty ids");
+     return ids;
+ }
+ 
++static int parse_m(const std::string& s) {
++    size_t used = 0;
++    int m = std::stoi(s, &used);
++    if (used != s.size() || m < 1 || m > 4095) throw std::runtime_error("m outside [1,4095]");
++    return m;
++}
++
+ int main(int argc, char** argv) {
+-    if (argc < 4) {
+-        fprintf(stderr, "usage: %s calib <bvecs> <ids_file> | gt <bvecs> <endpoints_file> <m> <out_file>\n", argv[0]);
++    try {
++        if (argc < 4) throw std::runtime_error("calib bvecs ids [m,...] | gt bvecs ids m output");
++        Dataset x = load(argv[2]);
++        auto ids = read_ids(argv[3], x.n());
++        std::string mode(argv[1]);
++        if (mode == "calib") {
++            if (argc > 5) throw std::runtime_error("extra calibration arguments");
++            std::vector<int> radii;
++            std::stringstream ss(argc == 5 ? argv[4] : "262,264,266,268,270,272,274,276,280");
++            std::string s;
++            while (std::getline(ss, s, ',')) radii.push_back(parse_m(s));
++            if (radii.empty() || radii.size() > 64) throw std::runtime_error("invalid m list");
++            std::vector<std::vector<size_t>> counts(radii.size(), std::vector<size_t>(ids.size()));
++            #pragma omp parallel for schedule(static)
++            for (long long t = 0; t < static_cast<long long>(ids.size()); ++t) {
++                for (size_t j = 0; j < x.n(); ++j) {
++                    if (j == ids[t]) continue;
++                    int32_t distance = d2(x.row(ids[t]), x.row(j));
++                    for (size_t c = 0; c < radii.size(); ++c)
++                        if (distance < radii[c] * radii[c]) ++counts[c][t];
++                }
++            }
++            std::cout << "m\tthreshold\tsamples\ttotal_neighbors\tmean_neighbors\n";
++            for (size_t c = 0; c < radii.size(); ++c) {
++                size_t sum = 0;
++                for (auto count : counts[c]) sum += count;
++                std::cout.precision(17);
++                std::cout << radii[c] << '\t' << radii[c] * radii[c] << '\t'
++                          << ids.size() << '\t' << sum << '\t' << double(sum) / ids.size() << '\n';
++            }
++        } else if (mode == "gt") {
++            if (argc != 6) throw std::runtime_error("gt requires m and output");
++            int m = parse_m(argv[4]);
++            std::vector<std::vector<size_t>> neighbors(ids.size());
++            #pragma omp parallel for schedule(static)
++            for (long long t = 0; t < static_cast<long long>(ids.size()); ++t)
++                for (size_t j = 0; j < x.n(); ++j)
++                    if (j != ids[t] && d2(x.row(ids[t]), x.row(j)) < m * m)
++                        neighbors[t].push_back(j);
++            FILE* out = std::fopen(argv[5], "wx");
++            if (!out) throw std::runtime_error("cannot create output exclusively");
++            for (size_t t = 0; t < ids.size(); ++t) {
++                std::fprintf(out, "%zu %zu", ids[t], neighbors[t].size());
++                for (auto j : neighbors[t]) std::fprintf(out, " %zu", j);
++                std::fprintf(out, "\n");
++            }
++            bool failed = std::ferror(out);
++            if (std::fclose(out) || failed) throw std::runtime_error("GT write failed");
++        } else throw std::runtime_error("unknown mode");
++    } catch (const std::exception& e) {
++        std::cerr << "gate5ar oracle: " << e.what() << '\n';
+         return 1;
+     }
+-    std::string mode = argv[1];
+-    std::vector<uint8_t> X;
+-    load_bvecs(argv[2], X);
+-
+-    if (mode == "calib") {
+-        std::vector<size_t> ids = read_ids(argv[3]);
+-        const int CAND[] = {262,264,266,268,270,272,274,276,280};
+-        const size_t NC = sizeof(CAND) / sizeof(CAND[0]);
+-        std::vector<std::vector<uint32_t>> cnt(NC, std::vector<uint32_t>(ids.size(), 0));
+-        int64_t have0 = -1;
+-        for (size_t s = 0; s < ids.size(); s++) if (ids[s] == 0) have0 = (int64_t)s;
+-        #pragma omp parallel for schedule(dynamic)
+-        for (int64_t s = 0; s < (int64_t)ids.size(); s++) {
+-            const uint8_t* a = &X[ids[s] * REC];
+-            for (size_t j = 0; j < N; j++) {
+-                int32_t v = d2(a, &X[j * REC]);
+-                for (size_t c = 0; c < NC; c++)
+-                    if (v < CAND[c] * CAND[c]) cnt[c][s]++;
+-            }
+-            for (size_t c = 0; c < NC; c++) cnt[c][s]--; // exclude self (d2==0)
+-        }
+-        printf("samples=%zu\n", ids.size());
+-        printf("%6s %10s %8s %8s %8s %8s %10s %9s\n",
+-               "m", "m^2", "mean", "median", "min", "max", "frac_empty", "|N(0)|");
+-        for (size_t c = 0; c < NC; c++) {
+-            std::vector<uint32_t> v = cnt[c];
+-            std::sort(v.begin(), v.end());
+-            double mean = 0; size_t empty = 0;
+-            for (uint32_t x : v) { mean += x; if (x == 0) empty++; }
+-            mean /= v.size();
+-            uint32_t n0 = 0;
+-            if (have0 >= 0) n0 = cnt[c][have0];
+-            printf("%6d %10d %8.2f %8u %8u %8u %10.4f %9u\n",
+-                   CAND[c], CAND[c] * CAND[c], mean,
+-                   v.empty() ? 0 : v[v.size() / 2], v.empty() ? 0 : v.front(),
+-                   v.empty() ? 0 : v.back(), v.empty() ? 0.0 : (double)empty / v.size(), n0);
+-        }
+-        return 0;
+-    } else if (mode == "gt") {
+-        if (argc < 6) { fprintf(stderr, "gt mode needs <endpoints> <m> <out>\n"); return 1; }
+-        std::vector<size_t> ids = read_ids(argv[3]);
+-        int m = atoi(argv[4]);
+-        if (m <= 0 || m > 4095) { fprintf(stderr, "m must be in [1,4095]\n"); return 1; }
+-        int32_t thr = m * m; // exact int32, same strict '<' as the binary's exact float32 chain
+-        FILE* out = fopen(argv[5], "w");
+-        if (!out) { fprintf(stderr, "cannot open %s\n", argv[5]); return 1; }
+-        std::vector<std::vector<uint32_t>> nb(ids.size());
+-        #pragma omp parallel for schedule(dynamic)
+-        for (int64_t s = 0; s < (int64_t)ids.size(); s++) {
+-            const uint8_t* a = &X[ids[s] * REC];
+-            for (size_t j = 0; j < N; j++) {
+-                if (j == ids[s]) continue;
+-                if (d2(a, &X[j * REC]) < thr) nb[s].push_back((uint32_t)j);
+-            }
+-        }
+-        size_t tot = 0;
+-        for (size_t s = 0; s < ids.size(); s++) {
+-            std::sort(nb[s].begin(), nb[s].end());
+-            tot += nb[s].size();
+-            fprintf(out, "%zu %zu", ids[s], nb[s].size());
+-            for (uint32_t j : nb[s]) fprintf(out, " %u", j);
+-            fprintf(out, "\n");
+-        }
+-        fclose(out);
+-        fprintf(stderr, "gt: endpoints=%zu m=%d thr=%d total_pairs=%zu mean_neighbors=%.3f\n",
+-                ids.size(), m, thr, tot, (double)tot / ids.size());
+-        return 0;
+-    }
+-    fprintf(stderr, "unknown mode %s\n", mode.c_str());
+-    return 1;
++    return 0;
+ }

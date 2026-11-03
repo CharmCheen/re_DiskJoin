@@ -1,0 +1,1077 @@
+diff --git a/lib/Cache.h b/lib/Cache.h
+--- a/lib/Cache.h
++++ b/lib/Cache.h
+@@ -3,6 +3,9 @@
+ #include "../utils/utils.h"
+ #include "../utils/heap.h"
+ #include "string.h"
++#include <cstdlib>
++#include <cstdio>
++#include <fstream>
+ 
+ struct Cache {
+     size_t budget;
+@@ -13,6 +16,17 @@
+     size_t filled;
+     size_t hit;
+     size_t total;
++    // [GATE4A] mechanism counters: cold admits, true evictions, rejected
++    // pushes (cache full and new bucket's next use is later than victim's).
++    size_t admit;
++    size_t evict;
++    size_t reject;
++    // [GATE4B1] replacement policy in force:
++    //   0 = belady_reject (default, original Cache behaviour)
++    //   1 = belady_forced (forced load, farthest-next-use victim)
++    //   2 = lru_forced    (forced load, least-recently-used victim)
++    size_t g4b1_policy;
++    std::ofstream g4a_trace; // [GATE4A] optional access/eviction trace
+     updateable_heap<size_t, size_t, std::greater<size_t>> priority;
+     std::vector<int> address_table;
+     std::vector<size_t> ptr;
+@@ -20,11 +34,68 @@
+ 
+     Cache(size_t budget, size_t length): budget(budget), length(length) {
+         size = budget / 4 / length;
++        // [GATE4B1] env-gated capacity override: changes ONLY the number of
++        // cache slots. Bucketization, the task graph, the Gorder window and
++        // the ClusterWriter buffer all derive from mem_budget on other code
++        // paths and are untouched by this override (verified by task-multiset
++        // / pair-set identity runs). Unset -> budget-derived capacity,
++        // reference behaviour unchanged.
++        size_t g4b1_capacity_default = size;
++        const char* g4b1_cap_env = getenv("GATE4B1_CAPACITY");
++        if (g4b1_cap_env) {
++            long g4b1_cap = strtol(g4b1_cap_env, nullptr, 10);
++            if (g4b1_cap <= 0) {
++                fprintf(stderr, "[gate4b1] invalid GATE4B1_CAPACITY=%s\n", g4b1_cap_env);
++                exit(1);
++            }
++            size = (size_t)g4b1_cap;
++        }
++        // [GATE4B1] env-gated policy selector. All policies share the same
++        // access sequence (find order is fixed by the task graph), capacity,
++        // initial state and miss definition; they differ only in the push
++        // decision and in what the priority heap encodes:
++        //   belady_reject  (default) - original: cold-admit; evict the
++        //                  farthest-next-use resident iff its next use is
++        //                  strictly later than the incoming's, else reject.
++        //   belady_forced  - forced load (no reject branch), victim =
++        //                  farthest-next-use resident (next-use keys).
++        //   lru_forced     - forced load, victim = least-recently-used
++        //                  resident. Recency is encoded as SIZE_MAX - access
++        //                  index, so the largest key = oldest access = top
++        //                  of this same max-heap (the encoding LRUCache
++        //                  below already uses with its total-cnt key).
++        g4b1_policy = 0;
++        const char* g4b1_policy_env = getenv("GATE4B1_POLICY");
++        if (g4b1_policy_env) {
++            if (strcmp(g4b1_policy_env, "belady_reject") == 0) g4b1_policy = 0;
++            else if (strcmp(g4b1_policy_env, "belady_forced") == 0) g4b1_policy = 1;
++            else if (strcmp(g4b1_policy_env, "lru_forced") == 0) g4b1_policy = 2;
++            else {
++                fprintf(stderr, "[gate4b1] unknown GATE4B1_POLICY=%s (expected belady_reject|belady_forced|lru_forced)\n", g4b1_policy_env);
++                exit(1);
++            }
++        }
+         data = new float[length * size];
+         priority = updateable_heap<size_t, size_t, std::greater<size_t>>(size + 1);
+         filled = 0;
+         hit = 0;
+         total = 0;
++        admit = 0;
++        evict = 0;
++        reject = 0;
++        if (g4b1_cap_env || g4b1_policy_env) {
++            fprintf(stderr, "[gate4b1] policy=%s capacity=%zu capacity_default=%zu\n",
++                    g4b1_policy == 0 ? "belady_reject"
++                    : (g4b1_policy == 1 ? "belady_forced" : "lru_forced"),
++                    size, g4b1_capacity_default);
++        }
++        // [GATE4A] env-gated trace: one line per access ("A seq id hit") and
++        // per push ("P seq id admit|evict|reject victim"). find/push are only
++        // called from the serial section of DiskJoin::search, so no locking
++        // is needed.
++        if (getenv("GATE4A_CACHE_TRACE")) {
++            g4a_trace.open(getenv("GATE4A_CACHE_TRACE"));
++        }
+     }
+ 
+     void init(std::vector<std::vector<size_t>> tasks, size_t n = 0) {
+@@ -44,25 +115,64 @@
+     inline bool find(size_t id, float* buffer, unsigned bucket_length) {
+         total++;
+         ptr[id]++;
+-        if (address_table[id] == -1) return false;
++        if (address_table[id] == -1) {
++            if (g4a_trace.is_open()) g4a_trace << "A " << total << " " << id << " 0\n";
++            return false;
++        }
+         hit++;
+-        priority.update(std::make_pair(id, iters[id][ptr[id]]));
++        // [GATE4B1] heap key: next-use position (Belady policies) or recency
++        // encoding (LRU). total was already incremented, so SIZE_MAX - total
++        // is unique and strictly decreasing over the run (same encoding as
++        // LRUCache), making the max-heap top the least-recently-used resident.
++        if (g4b1_policy == 2) {
++            priority.update(std::make_pair(id, std::numeric_limits<size_t>::max() - total));
++        } else {
++            priority.update(std::make_pair(id, iters[id][ptr[id]]));
++        }
+         memcpy(buffer, data + address_table[id] * length, bucket_length * sizeof(float));
++        if (g4a_trace.is_open()) g4a_trace << "A " << total << " " << id << " 1\n";
+         return true;
+     }
+ 
+     inline void push(size_t id, float* buffer, unsigned bucket_length) {
++        // [GATE4B1] heap key at push time (see find()): next-use position
++        // for the Belady policies, recency encoding for LRU.
++        size_t g4b1_key = (g4b1_policy == 2)
++            ? (std::numeric_limits<size_t>::max() - total)
++            : iters[id][ptr[id]];
+         if (filled < size) {
+             address_table[id] = filled;
+             memcpy(data + address_table[id] * length, buffer, bucket_length * sizeof(float));
+-            priority.add(std::make_pair(id, iters[id][ptr[id]]));
++            priority.add(std::make_pair(id, g4b1_key));
+             filled++;
+-        } else if (priority.top().second > iters[id][ptr[id]]) {
+-            memcpy(data + address_table[priority.top().first] * length, buffer, bucket_length * sizeof(float));
+-            address_table[id] = address_table[priority.top().first];
+-            address_table[priority.top().first] = -1;
++            admit++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " admit -1\n";
++        } else if (g4b1_policy == 0 && !(priority.top().second > iters[id][ptr[id]])) {
++            // [GATE4B1] original belady_reject branch, condition verbatim:
++            // keep the residents when the farthest next use is NOT strictly
++            // later than the incoming bucket's next use.
++            reject++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " reject -1\n";
++        } else {
++            // [GATE4B1] evict branch: forced load for belady_forced/lru_forced
++            // (no reject); victim = heap top = farthest next use (policies
++            // 0/1) or least recently used (policy 2).
++            auto g4a_victim = priority.top().first;
++            memcpy(data + address_table[g4a_victim] * length, buffer, bucket_length * sizeof(float));
++            address_table[id] = address_table[g4a_victim];
++            address_table[g4a_victim] = -1;
+             priority.pop();
+-            priority.add(std::make_pair(id, iters[id][ptr[id]]));
++            priority.add(std::make_pair(id, g4b1_key));
++            evict++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " evict " << g4a_victim << "\n";
++        }
++    }
++
++    // [GATE4A] env-gated mechanism statistics (print-only).
++    void g4a_stats() {
++        if (getenv("GATE4A_STATS")) {
++            fprintf(stderr, "[gate4a-cache] capacity_slots=%zu length=%zu budget_bytes=%zu filled=%zu total=%zu hit=%zu miss=%zu admit=%zu evict=%zu reject=%zu\n",
++                    size, length, budget, filled, total, hit, total - hit, admit, evict, reject);
+         }
+     }
+ 
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -6,6 +6,8 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <string.h>
++#include <cstdlib>
++#include <cstdio>
+ #include <omp.h>
+ 
+ #include "DataReader.h"
+@@ -56,6 +58,16 @@
+         cluster_num = assignment.size();
+         radii.resize(cluster_num);
+         size_t buffer_size = div_round_up(budget * (size_t)1024 * 1024 * 1024 / cluster_num, d * 4) * d * 4;
++        // [GATE4A] env-gated build-side accounting: the SAME mem_budget that
++        // sizes the search-time Cache also sizes this per-bucket write buffer.
++        // buffer_size must stay >= d*4 (>=1 vector) or the memcpy below writes
++        // out of bounds of a zero-sized allocation. Print-only check.
++        if (getenv("GATE4A_STATS")) {
++            fprintf(stderr, "[gate4a-writer] cluster_num=%zu d=%zu budget_bytes=%zu buffer_size=%zu buffer_vectors=%zu total_buffer_bytes=%zu min_ok=%d\n",
++                    cluster_num, d, (size_t)(budget * (size_t)1024 * 1024 * 1024), buffer_size,
++                    buffer_size / (d * 4), buffer_size * cluster_num,
++                    buffer_size >= d * 4 ? 1 : 0);
++        }
+         char* buffer = new char[cluster_num * buffer_size];
+         std::vector<size_t> buffer_pos(cluster_num);
+         std::vector<size_t> file_pos(cluster_num);
+@@ -96,6 +108,14 @@
+         for (size_t i = 0; i < cluster_num; i++) {
+             radii[i] = sqrt(radii[i]);
+         }
++        // [GATE4B1] minimal leak fix: `buffer` (new char[cluster_num *
++        // buffer_size]) and `data_buf` (new float[batch_size * d]) were
++        // allocated at the top of writeClusters and never released
++        // (Gate 4B-0 LeakSanitizer evidence: direct leaks of 430080 + 256 B
++        // on p3-small). Matching deletes at scope exit; no other logic
++        // changes.
++        delete[] data_buf;
++        delete[] buffer;
+     }
+ 
+     void writeMetadata(std::vector<std::vector<size_t>>& assignment) {
+@@ -143,6 +163,9 @@
+ 
+     double total;
+     double used;
++    // [GATE4B1] count of posixDirectReadCluster calls (= cache misses, since
++    // it is the only read path and is called exactly once per find()==false).
++    size_t reads = 0;
+ 
+     ClusterReader(std::string clusterfile, std::string metafile, size_t max_task_size = 1):
+         task_num(0),
+@@ -195,6 +218,7 @@
+         size_t aligned_read_size = div_round_up(buffer_offset + read_size, PAGE_SIZE) * PAGE_SIZE;
+         total += aligned_read_size;
+         used += read_size;
++        reads++; // [GATE4B1]
+         lseek(cluster_fd, file_offset, SEEK_SET);
+         auto count = read(cluster_fd, buffer, aligned_read_size);
+         memcpy(data_buffer, buffer + buffer_offset, read_size);
+@@ -204,6 +228,9 @@
+         fcluster.close();
+         fmeta.close();
+         close(cluster_fd);
+-        delete[] buffer;
++        // [GATE4A] G3-03 fix: buffer was allocated with aligned_alloc (POSIX),
++        // so it must be released with free(), not delete[] (ASan: alloc-
++        // dealloc-mismatch). Semantics of the read path are unchanged.
++        free(buffer);
+     }
+ };
+\ No newline at end of file
+diff --git a/lib/DiskJoin.h b/lib/DiskJoin.h
+--- a/lib/DiskJoin.h
++++ b/lib/DiskJoin.h
+@@ -2,6 +2,10 @@
+ 
+ #include <algorithm>
+ #include <thread>
++#include <cstdlib>
++#include <cstring>
++#include <fstream>
++#include <omp.h>
+ #include "Kmeans.h"
+ #include "ClusterIO.h"
+ #include "Gorder.h"
+@@ -53,6 +57,16 @@
+                 top_candidates.pop();
+                 dis_to_boundary.emplace_back(temp, neighbor_cluster);
+             }
++            // [GATE4A] env-gated raw candidate dump (post-knn, pre-pruning).
++            if (getenv("GATE4A_KNN_OUT")) {
++                #pragma omp critical
++                {
++                    std::ofstream g4a_knn(getenv("GATE4A_KNN_OUT"), std::ios::app);
++                    g4a_knn << i << " " << dis_to_boundary.size();
++                    for (auto& c : dis_to_boundary) g4a_knn << " " << c.first << " " << c.second;
++                    g4a_knn << "\n";
++                }
++            }
+             std::sort(dis_to_boundary.begin(), dis_to_boundary.end());
+             int ptr = dis_to_boundary.size() - 1;
+             float sum_of_angle = 0;
+@@ -93,10 +107,130 @@
+         }
+         size_t budget = (size_t)(config.mem_budget * 1024 * 1024 * 1024);
+         size_t length = cluster_reader.max_points * d;
+-        perm = order_gorder(shuffled_tasks, budget / 4 / length / config.K * 2);
++        // [GATE4B0] env-gated Gorder window override. The window normally
++        // derives from mem_budget (budget/4/length/K*2) - the SAME knob that
++        // sets the Cache capacity (budget/4/length) and the build-time
++        // ClusterWriter buffer. This override lets an experiment change the
++        // window alone without touching mem_budget, so cache conditions stay
++        // fixed. Unset -> original expression, reference behaviour unchanged.
++        size_t g4b0_window = budget / 4 / length / config.K * 2;
++        const char* g4b0_window_env = getenv("GATE4B0_WINDOW");
++        if (g4b0_window_env) g4b0_window = strtoull(g4b0_window_env, nullptr, 10);
++        perm = order_gorder(shuffled_tasks, g4b0_window);
++        // [GATE4B0] env-gated task-order override applied AFTER Gorder: perm
++        // maps bucket -> slot, so overriding perm only changes which slot a
++        // bucket is processed in (and hence the cache access sequence).
++        // Bucket labels, task lists, the upper-triangle filter and the join
++        // itself are untouched; the task multiset and the output pair set
++        // are invariant by construction.
++        //   GATE4B0_ORDER=identity -> slot i processes bucket i
++        //   GATE4B0_ORDER=file     -> perm read from GATE4B0_PERM_FILE
++        //   unset                  -> Gorder result (reference behaviour)
++        const char* g4b0_order = getenv("GATE4B0_ORDER");
++        if (g4b0_order && strcmp(g4b0_order, "identity") == 0) {
++            for (size_t i = 0; i < cluster_num; i++) perm[i] = i;
++        } else if (g4b0_order && strcmp(g4b0_order, "file") == 0) {
++            const char* g4b0_perm_file = getenv("GATE4B0_PERM_FILE");
++            if (!g4b0_perm_file) {
++                std::cerr << "[gate4b0] GATE4B0_ORDER=file requires GATE4B0_PERM_FILE\n";
++                exit(1);
++            }
++            std::ifstream g4b0_perm_in(g4b0_perm_file);
++            if (!g4b0_perm_in) {
++                std::cerr << "[gate4b0] cannot open GATE4B0_PERM_FILE=" << g4b0_perm_file << "\n";
++                exit(1);
++            }
++            std::vector<char> g4b0_seen(cluster_num, 0);
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (!(g4b0_perm_in >> perm[i]) || perm[i] >= cluster_num || g4b0_seen[perm[i]]) {
++                    std::cerr << "[gate4b0] GATE4B0_PERM_FILE invalid at entry " << i << "\n";
++                    exit(1);
++                }
++                g4b0_seen[perm[i]] = 1;
++            }
++        } else if (g4b0_order) {
++            std::cerr << "[gate4b0] unknown GATE4B0_ORDER=" << g4b0_order
++                      << " (expected identity|file)\n";
++            exit(1);
++        }
++        if (g4b0_order || g4b0_window_env) {
++            std::cerr << "[gate4b0] order=" << (g4b0_order ? g4b0_order : "default")
++                      << " window=" << g4b0_window
++                      << " window_default=" << (budget / 4 / length / config.K * 2) << "\n";
++        }
+         for (size_t i = 0; i < cluster_num; i++) {
+             reordered_tasks[perm[i]] = shuffled_tasks[i];
+             order[perm[i]] = i;
++        }
++        // [GATE4A] env-gated configuration decomposition: shows how ONE
++        // mem_budget value simultaneously determines (a) the ClusterWriter
++        // per-bucket write buffer used at build time, (b) this Cache capacity,
++        // and (c) the Gorder window passed above. Print-only.
++        if (getenv("GATE4A_STATS")) {
++            size_t capacity = budget / 4 / length;
++            size_t window = budget / 4 / length / config.K * 2;
++            size_t writer_buffer = div_round_up(budget / cluster_num, d * 4) * d * 4;
++            std::cerr << "[gate4a-config] n=" << (size_t)cluster_reader.n
++                      << " d=" << d
++                      << " cluster_num=" << cluster_num
++                      << " max_points=" << cluster_reader.max_points
++                      << " budget_bytes=" << budget
++                      << " length=" << length
++                      << " capacity_slots=" << capacity
++                      << " K=" << config.K
++                      << " window=" << window
++                      << " window_lt_cluster_num=" << (window < cluster_num ? 1 : 0)
++                      << " capacity_lt_cluster_num=" << (0 < capacity && capacity < cluster_num ? 1 : 0)
++                      << " writer_buffer_bytes=" << writer_buffer
++                      << " writer_buffer_vectors=" << (writer_buffer / (d * 4))
++                      << " error_bound=" << config.error_bound
++                      << " radius=" << config.radius
++                      << " task_num_total=" << task_num
++                      << " max_task_num=" << max_task_num
++                      << "\n";
++        }
++        // [GATE4A] env-gated task-graph dump: line i is
++        // "<slot> <target_bucket> <deg> <neighbour buckets...>" after the
++        // Gorder reorder. The identity-order graph is recoverable because
++        // the lists themselves are unmodified, only their placement permuted.
++        if (getenv("GATE4A_TASK_OUT")) {
++            std::ofstream g4a_tasks(getenv("GATE4A_TASK_OUT"));
++            for (size_t i = 0; i < cluster_num; i++) {
++                g4a_tasks << i << " " << order[i] << " " << reordered_tasks[i].size();
++                for (auto nc : reordered_tasks[i]) g4a_tasks << " " << nc;
++                g4a_tasks << "\n";
++            }
++        }
++        // [GATE3] runtime invariant checks, gated, no effect on join logic.
++        if (getenv("GATE3_INVARIANTS")) {
++            std::vector<size_t> seen(cluster_num, 0);
++            size_t perm_ok = 1, viol_head = 0, empty_tasks = 0, self_missing = 0;
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (order[i] >= cluster_num || seen[order[i]]) { perm_ok = 0; }
++                else seen[order[i]] = 1;
++            }
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (reordered_tasks[i].empty()) { empty_tasks++; continue; }
++                if (reordered_tasks[i][0] != order[i]) viol_head++;
++                bool has_self = false;
++                for (auto nc : reordered_tasks[i]) if (nc == order[i]) has_self = true;
++                if (!has_self) self_missing++;
++            }
++            size_t task_total = 0, upper_ok = 1;
++            for (size_t i = 0; i < cluster_num; i++) {
++                task_total += reordered_tasks[i].size();
++                for (auto nc : reordered_tasks[i]) if (nc < order[i]) upper_ok = 0;
++            }
++            size_t sum_bucket = 0;
++            for (auto s : bucket_sizes) sum_bucket += s;
++            std::cerr << "[gate3-inv] perm_ok=" << perm_ok
++                      << " empty_tasks=" << empty_tasks
++                      << " head_mismatch=" << viol_head
++                      << " self_missing=" << self_missing
++                      << " upper_triangle_ok=" << upper_ok
++                      << " task_total=" << task_total
++                      << " bucket_sum=" << sum_bucket
++                      << " n=" << (size_t)cluster_reader.n << "\n";
+         }
+         std::vector<float> data(max_task_num * length);
+ 
+@@ -109,6 +243,12 @@
+         float disk_time = 0;
+         float comp_time = 0;
+         float dist_comp = 0;
++        // [GATE3] env-gated pair-output instrumentation. It records the same
++        // hit condition used by the reference and does not alter candidate
++        // generation, ordering, cache behaviour, pruning or distance logic.
++        const char* gate3_pair_out = getenv("GATE3_PAIR_OUT");
++        std::vector<std::vector<std::pair<size_t, size_t>>> gate3_pair_bufs;
++        if (gate3_pair_out) gate3_pair_bufs.resize(omp_get_max_threads());
+         for (size_t i = 0; i < cluster_num; i++) {
+             auto target_cluster = order[i];
+             auto& target_tasks = reordered_tasks[i];
+@@ -125,6 +265,8 @@
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+                 float* vec1 = data.data() + j * d;
++                std::vector<std::pair<size_t, size_t>>* gate3_local =
++                    gate3_pair_out ? &gate3_pair_bufs[omp_get_thread_num()] : nullptr;
+                 for (size_t l = 0; l < bucket_sizes[target_cluster]; l++) {
+                     auto id2 = assignment[target_cluster][l];
+                     if (id2 >= id1) continue;
+@@ -134,6 +276,7 @@
+                     if (dist < epsilon * epsilon) {
+                         if (id1 % 100000 == 0) count++;
+                         if (id2 % 100000 == 0) count++;
++                        if (gate3_local) gate3_local->emplace_back(std::min(id1, id2), std::max(id1, id2));
+                     }
+                 }
+ 
+@@ -148,11 +291,44 @@
+                         if (dist1 < epsilon * epsilon) {
+                             if (id1 % 100000 == 0) count++;
+                             if (id2 % 100000 == 0) count++;
++                            if (gate3_local) gate3_local->emplace_back(std::min(id1, id2), std::max(id1, id2));
+                         };
+                     }
+                 }
+             }
+         }
+         std::cout << "recall = " << 1.0 * count / config.gt << "\n";
++        cache.g4a_stats(); // [GATE4A] env-gated cache mechanism statistics
++        // [GATE4B1] env-gated I/O accounting: posixDirectReadCluster is the
++        // only bucket-read path and is called exactly once per cache miss, so
++        // read_calls must equal the miss count; effective_bytes = sum of
++        // bucket_size*d*4 over misses (useful payload); requested_aligned_
++        // bytes = sum of 4096-aligned read sizes actually passed to read(2)
++        // under O_DIRECT. Device-layer physical I/O is NOT measured here.
++        if (getenv("GATE4B1_IO_STATS")) {
++            fprintf(stderr, "[gate4b1-io] read_calls=%zu effective_bytes=%zu requested_aligned_bytes=%zu page_size=%zu\n",
++                    cluster_reader.reads, (size_t)cluster_reader.used, (size_t)cluster_reader.total, (size_t)PAGE_SIZE);
++        }
++        // [GATE3] precise statistics, gated.
++        if (getenv("GATE3_INVARIANTS")) {
++            std::cerr << "[gate3-stat] dist_comp=" << (size_t)dist_comp
++                      << " sampled_count=" << count
++                      << " gt=" << config.gt << "\n";
++        }
++        // [GATE3] write per-thread pair buffers (thread-local -> no locking).
++        if (gate3_pair_out) {
++            std::ofstream gate3_f(gate3_pair_out);
++            size_t gate3_total = 0;
++            for (auto& gate3_pb : gate3_pair_bufs) {
++                for (auto& gate3_pr : gate3_pb) {
++                    gate3_f << gate3_pr.first << " " << gate3_pr.second << "\n";
++                    gate3_total++;
++                }
++            }
++            gate3_f.close();
++            std::cerr << "[gate3] pair_dump=" << gate3_pair_out
++                      << " pairs=" << gate3_total
++                      << " threads=" << gate3_pair_bufs.size() << "\n";
++        }
+     }
+ };
+diff --git a/lib/Gorder.h b/lib/Gorder.h
+--- a/lib/Gorder.h
++++ b/lib/Gorder.h
+@@ -1,6 +1,8 @@
+ #pragma once
+ 
+ #include <vector>
++#include <cstdlib>
++#include <cstdio>
+ #include "Unitheap.h"
+ 
+ using namespace std;
+@@ -82,14 +84,18 @@
+ 
+ 	move_window(out_neigh, in_neigh, heap, hub, hub);
+ 
++	ul g4a_window_removals = 0; // [GATE4A] window-slide event counter
++
+ 	while (heap.heapsize > 0) {
+ 		// if (order.size() % 10000 == 0)
+ 			// cout << order.size() << "\n";
+ 		ul new_node = heap.ExtractMax();
+ 		order.push_back(new_node);
+ 		ul old_node = new_node;
+-		if (order.size() > window) // remove oldest node of window
++		if (order.size() > window) { // remove oldest node of window
+ 			old_node = order[order.size() - window - 1];
++			g4a_window_removals++; // [GATE4A] window slide actually executed
++		}
+ 		// else Debug("no window"<<endl)
+ 		move_window(out_neigh, in_neigh, heap, new_node, old_node);
+ 	}
+@@ -99,5 +105,19 @@
+ 		rank[order[i]] = i;
+ 	}
+ 
++	// [GATE4A] env-gated window-activation statistics (print-only).
++	if (getenv("GATE4A_STATS")) {
++		int perm_ok = 1;
++		if (rank.size() == n) {
++			std::vector<size_t> seen(n, 0);
++			for (size_t i = 0; i < n; i++) {
++				if (rank[i] >= n || seen[rank[i]]) { perm_ok = 0; break; }
++				seen[rank[i]] = 1;
++			}
++		} else perm_ok = 0;
++		fprintf(stderr, "[gate4a-gorder] n=%zu n2=%zu window=%zu insertions=%zu window_removals=%zu perm_ok=%d\n",
++			(size_t)n, (size_t)n2, (size_t)window, (size_t)order.size(), (size_t)g4a_window_removals, perm_ok);
++	}
++
+ 	return rank;
+ }
+\ No newline at end of file
+diff --git a/lib/hnswlib/hnswalg.h b/lib/hnswlib/hnswalg.h
+--- a/lib/hnswlib/hnswalg.h
++++ b/lib/hnswlib/hnswalg.h
+@@ -8,6 +8,7 @@
+ #include <assert.h>
+ #include <unordered_set>
+ #include <list>
++#include <stdexcept>
+ 
+ namespace hnswlib {
+ typedef unsigned int tableint;
+@@ -191,6 +192,46 @@
+     }
+ 
+ 
++    // Hints must not read beyond logical adjacency or construct invalid pointers.
++    // Invalid *consumed* neighbors fail closed; speculative lookahead is skipped.
++    inline size_t checkedDegree(linklistsizeint* links, size_t capacity,
++                                VisitedList* vl = nullptr) const {
++        size_t count = getListCount(links);
++        if (count > capacity) {
++            if (vl) visited_list_pool_->releaseVisitedList(vl);
++            throw std::runtime_error("gate5ar: invalid HNSW degree");
++        }
++        return count;
++    }
++
++    inline tableint checkedNeighbor(const tableint* ids, size_t count, size_t index,
++                                    VisitedList* vl = nullptr) const {
++        if (index >= count || ids[index] >= cur_element_count) {
++            if (vl) visited_list_pool_->releaseVisitedList(vl);
++            throw std::runtime_error("gate5ar: invalid HNSW neighbor");
++        }
++        return ids[index];
++    }
++
++    inline void prefetchNode(tableint id, const vl_type* visited = nullptr) const {
++        if (id >= cur_element_count) return;
++#if defined(USE_SSE) && !defined(GATE5AR_DISABLE_PREFETCH)
++        _mm_prefetch(getDataByInternalId(id), _MM_HINT_T0);
++        if (visited) {
++            _mm_prefetch(reinterpret_cast<const char*>(visited + id), _MM_HINT_T0);
++            if (max_elements_ - id > 64)
++                _mm_prefetch(reinterpret_cast<const char*>(visited + id + 64), _MM_HINT_T0);
++        }
++#else
++        (void)visited;
++#endif
++    }
++
++    inline void prefetchNeighbor(const tableint* ids, size_t count, size_t index,
++                                 const vl_type* visited = nullptr) const {
++        if (index < count) prefetchNode(ids[index], visited);
++    }
++
+     int getRandomLevel(double reverse_size) {
+         std::uniform_real_distribution<double> distribution(0.0, 1.0);
+         double r = -log(distribution(level_generator_)) * reverse_size;
+@@ -248,21 +289,18 @@
+                 data = (int*)get_linklist(curNodeNum, layer);
+ //                    data = (int *) (linkLists_[curNodeNum] + (layer - 1) * size_links_per_element_);
+             }
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, layer == 0 ? maxM0_ : maxM_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+ //                    if (candidate_id == 0) continue;
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -272,7 +310,7 @@
+                 if (top_candidates.size() < ef_construction_ || lowerBound > dist1) {
+                     candidateSet.emplace(-dist1, candidate_id);
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     if (!isMarkedDeleted(candidate_id))
+@@ -326,7 +364,7 @@
+ 
+             tableint current_node_id = current_node_pair.second;
+             int *data = (int *) get_linklist0(current_node_id);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+ //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+             if (collect_metrics) {
+                 // metric_hops++;
+@@ -334,19 +372,14 @@
+             }
+ 
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+-            _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
++            prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, 0, visited_array);
+ #endif
+ 
+             for (size_t j = 1; j <= size; j++) {
+-                int candidate_id = *(data + j);
++                tableint candidate_id = checkedNeighbor(reinterpret_cast<tableint*>(data + 1), size, j - 1, vl);
+ //                    if (candidate_id == 0) continue;
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+-                                _MM_HINT_T0);  ////////////
++                prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, j, visited_array);
+ #endif
+                 if (!(visited_array[candidate_id] == visited_array_tag)) {
+                     visited_array[candidate_id] = visited_array_tag;
+@@ -357,9 +390,7 @@
+                     if (top_candidates.size() < ef || lowerBound > dist) {
+                         candidate_set.emplace(-dist, candidate_id);
+ #ifdef USE_SSE
+-                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+-                                        offsetLevel0_,  ///////////
+-                                        _MM_HINT_T0);  ////////////////////////
++                        prefetchNode(candidate_set.top().second);
+ #endif
+ 
+                         if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
+@@ -406,21 +437,18 @@
+             candidateSet.pop();
+             tableint curNodeNum = curr_el_pair.second;
+             int *data = (int*)get_linklist0(curNodeNum);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+                 auto candidate_label = getExternalLabel(candidate_id);
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -431,7 +459,7 @@
+                     candidateSet.emplace(-dist1, candidate_id);
+ 
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     top_candidates.emplace(dist1, candidate_label);
+@@ -476,21 +504,18 @@
+             candidateSet.pop();
+             tableint curNodeNum = curr_el_pair.second;
+             int *data = (int*)get_linklist0(curNodeNum);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+                 auto candidate_label = getExternalLabel(candidate_id);
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -501,7 +526,7 @@
+                     candidateSet.emplace(-dist1, candidate_id);
+ 
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     top_candidates.emplace(dist1, candidate_label);
+@@ -1139,16 +1164,16 @@
+                     unsigned int *data;
+                     std::unique_lock <std::mutex> lock(link_list_locks_[currObj]);
+                     data = get_linklist_at_level(currObj, level);
+-                    int size = getListCount(data);
++                    int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+                     tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
++                    prefetchNeighbor(datal, size, 0);
+ #endif
+                     for (int i = 0; i < size; i++) {
+ #ifdef USE_SSE
+-                        _mm_prefetch(getDataByInternalId(*(datal + i + 1)), _MM_HINT_T0);
+-#endif
+-                        tableint cand = datal[i];
++                        prefetchNeighbor(datal, size, i + 1);
++#endif
++                        tableint cand = checkedNeighbor(datal, size, i);
+                         dist_t d = fstdistfunc_(dataPoint, getDataByInternalId(cand), dist_func_param_);
+                         if (d < curdist) {
+                             curdist = d;
+@@ -1194,7 +1219,7 @@
+     std::vector<tableint> getConnectionsWithLock(tableint internalId, int level) {
+         std::unique_lock <std::mutex> lock(link_list_locks_[internalId]);
+         unsigned int *data = get_linklist_at_level(internalId, level);
+-        int size = getListCount(data);
++        int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+         std::vector<tableint> result(size);
+         tableint *ll = (tableint *) (data + 1);
+         memcpy(result.data(), ll, size * sizeof(tableint));
+@@ -1252,7 +1277,7 @@
+         memset(data_level0_memory_ + cur_c * size_data_per_element_ + offsetLevel0_, 0, size_data_per_element_);
+ 
+         // Initialisation of the data and label
+-        memcpy(getExternalLabeLp(cur_c), &label, sizeof(labeltype));
++        setExternalLabel(cur_c, label); // Byte-addressed write avoids unaligned labeltype*.
+         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
+ 
+         if (curlevel) {
+@@ -1272,11 +1297,11 @@
+                         unsigned int *data;
+                         std::unique_lock <std::mutex> lock(link_list_locks_[currObj]);
+                         data = get_linklist(currObj, level);
+-                        int size = getListCount(data);
++                        int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+ 
+                         tableint *datal = (tableint *) (data + 1);
+                         for (int i = 0; i < size; i++) {
+-                            tableint cand = datal[i];
++                            tableint cand = checkedNeighbor(datal, size, i);
+                             if (cand < 0 || cand > max_elements_)
+                                 throw std::runtime_error("cand error");
+                             dist_t d = fstdistfunc_(data_point, getDataByInternalId(cand), dist_func_param_);
+@@ -1335,13 +1360,13 @@
+                 unsigned int *data;
+ 
+                 data = (unsigned int *) get_linklist(currObj, level);
+-                int size = getListCount(data);
++                int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+                 // metric_hops++;
+                 // metric_distance_computations+=size;
+ 
+                 tableint *datal = (tableint *) (data + 1);
+                 for (int i = 0; i < size; i++) {
+-                    tableint cand = datal[i];
++                    tableint cand = checkedNeighbor(datal, size, i);
+                     if (cand < 0 || cand > max_elements_)
+                         throw std::runtime_error("cand error");
+                     dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+@@ -1418,21 +1443,16 @@
+ 
+             tableint current_node_id = current_node_pair.second;
+             int *data = (int *) get_linklist0(current_node_id);
+-            size_t size = getListCount((linklistsizeint*)data);
+-
+-#ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+-            _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
++
++#ifdef USE_SSE
++            prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, 0, visited_array);
+ #endif
+ 
+             for (size_t j = 1; j <= size; j++) {
+-                int candidate_id = *(data + j);
+-#ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+-                                _MM_HINT_T0);  ////////////
++                tableint candidate_id = checkedNeighbor(reinterpret_cast<tableint*>(data + 1), size, j - 1, vl);
++#ifdef USE_SSE
++                prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, j, visited_array);
+ #endif
+                 if (!(visited_array[candidate_id] == visited_array_tag)) {
+                     visited_array[candidate_id] = visited_array_tag;
+@@ -1442,9 +1462,7 @@
+                     check_num++;
+                     candidate_set.emplace(-dist, candidate_id);
+ #ifdef USE_SSE
+-                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+-                                        offsetLevel0_,  ///////////
+-                                        _MM_HINT_T0);  ////////////////////////
++                        prefetchNode(candidate_set.top().second);
+ #endif
+                     top_candidates.emplace(dist, candidate_id);
+                     if (top_candidates.size() > k) top_candidates.pop();
+diff --git a/oracle/policy_test.cpp b/oracle/policy_test.cpp
+new file mode 100644
+--- /dev/null
++++ b/oracle/policy_test.cpp
+@@ -0,0 +1,165 @@
++// Gate 4B-1 standalone unit test for the GATE4B1 cache-policy selector
++// and the GATE4B1_CAPACITY override.
++//
++// Constructs Cache directly (no DiskJoin, no I/O), feeds hand-computed
++// access sequences and checks the mechanism counters of each policy against
++// expected values derived by hand from the semantics in lib/Cache.h.
++//
++// Counter conventions (original Cache semantics, unchanged): `admit` counts
++// ONLY cold admissions (filled < size); a bucket installed by evicting a
++// victim counts once under `evict` and NOT under `admit` (verified against
++// the reference runs: admit == capacity == 62).
++//
++// Policies:
++//   belady_reject (default): cold-admit; evict farthest-next-use resident
++//                 iff its next use is strictly later than the incoming's;
++//                 else reject (incoming data already in the scratch buffer).
++//   belady_forced: forced load; victim = farthest next use (SIZE_MAX = +inf).
++//   lru_forced:    forced load; victim = least recently used (recency key
++//                 SIZE_MAX - access index: largest key = oldest = heap top).
++#include <cstdio>
++#include <cstdlib>
++#include <vector>
++#include "../lib/Cache.h"
++
++static int failures = 0;
++
++static void expect(const char* what, size_t got, size_t want) {
++    if (got != want) {
++        printf("  FAIL %-28s got %zu want %zu\n", what, got, want);
++        failures++;
++    } else {
++        printf("  ok   %-28s = %zu\n", what, got);
++    }
++}
++
++struct Counters {
++    size_t total, hit, miss, admit, evict, reject;
++};
++
++static Counters run_policy(const char* policy, const char* capacity,
++                           const std::vector<std::vector<size_t>>& tasks,
++                           size_t n) {
++    setenv("GATE4B1_POLICY", policy, 1);
++    setenv("GATE4B1_CAPACITY", capacity, 1);
++    unsetenv("GATE4A_CACHE_TRACE");
++    Cache cache(1024, 16); // budget-derived size (16) is overridden by env
++    cache.init(tasks, n);
++    std::vector<float> scratch(16, 0.0f);
++    for (auto& t : tasks) {
++        for (size_t id : t) {
++            if (!cache.find(id, scratch.data(), 8)) {
++                cache.push(id, scratch.data(), 8);
++            }
++        }
++    }
++    Counters c;
++    c.total = cache.total;
++    c.hit = cache.hit;
++    c.miss = cache.total - cache.hit;
++    c.admit = cache.admit;
++    c.evict = cache.evict;
++    c.reject = cache.reject;
++    return c;
++}
++
++static void check(const char* name, const Counters& c,
++                  size_t miss, size_t hit, size_t admit, size_t evict, size_t reject) {
++    printf("[%s]\n", name);
++    expect("miss", c.miss, miss);
++    expect("hit", c.hit, hit);
++    expect("admit(cold only)", c.admit, admit);
++    expect("evict", c.evict, evict);
++    expect("reject", c.reject, reject);
++}
++
++int main() {
++    // ---- T1: minimal reject counterexample. capacity 1, accesses 0,1,0
++    // (bucket 1 is never used again).
++    //   belady_reject: 0(miss,cold admit) 1(miss,reject: victim next=2 is
++    //                  NOT strictly later than SIZE_MAX) 0(hit) -> 2 misses
++    //   belady_forced: 0(cold) 1(miss,evict 0,install) 0(miss,evict 1,
++    //                  install) -> 3 misses, 2 evicts, 1 cold admit
++    //   lru_forced:    same forced shape -> 3 misses
++    {
++        std::vector<std::vector<size_t>> t = {{0, 1, 0}};
++        check("T1 belady_reject cap=1 seq=0,1,0",
++              run_policy("belady_reject", "1", t, 2), 2, 1, 1, 0, 1);
++        check("T1 belady_forced cap=1 seq=0,1,0",
++              run_policy("belady_forced", "1", t, 2), 3, 0, 1, 2, 0);
++        check("T1 lru_forced cap=1 seq=0,1,0",
++              run_policy("lru_forced", "1", t, 2), 3, 0, 1, 2, 0);
++    }
++
++    // ---- T2: cyclic thrash. capacity 2, accesses 0,1,2,0,1.
++    //   iters: 0:[0,3,MAX] 1:[1,4,MAX] 2:[2,MAX]
++    //   belady_reject: 0(cold) 1(cold) 2(miss,reject: top next=4 not >
++    //                  SIZE_MAX) 0(hit) 1(hit) -> 3 misses, 1 reject
++    //   belady_forced: 2 evicts 1 (next 4) and installs; 0 hits; 1 misses
++    //                  again (evicts a MAX-tie victim)  -> 4 misses
++    //   lru_forced:    classic LRU thrash: every access misses -> 5 misses
++    {
++        std::vector<std::vector<size_t>> t = {{0, 1, 2, 0, 1}};
++        check("T2 belady_reject cap=2 seq=0,1,2,0,1",
++              run_policy("belady_reject", "2", t, 3), 3, 2, 2, 0, 1);
++        check("T2 belady_forced cap=2 seq=0,1,2,0,1",
++              run_policy("belady_forced", "2", t, 3), 4, 1, 2, 2, 0);
++        check("T2 lru_forced cap=2 seq=0,1,2,0,1",
++              run_policy("lru_forced", "2", t, 3), 5, 0, 2, 3, 0);
++    }
++
++    // ---- T3: Belady-victim vs LRU-victim within the SAME forced action
++    // set. capacity 2, accesses 0,1,0,1,2,0.
++    //   iters: 0:[0,2,5,MAX] 1:[1,3,MAX] 2:[4,MAX]
++    //   belady_reject: 0(cold) 1(cold) 0(h) 1(h) 2(miss,reject: top=1's
++    //                  SIZE_MAX not > 2's SIZE_MAX) 0(hit) -> 3 misses
++    //   belady_forced: 2 evicts 1 (next SIZE_MAX > 0's next 5) and installs;
++    //                  0 still resident -> hit -> 3 misses, 1 evict
++    //   lru_forced:    2 evicts 0 (least recently used: 0 last at p2, 1 at
++    //                  p3); 0 at p5 misses and evicts 1 -> 4 misses
++    {
++        std::vector<std::vector<size_t>> t = {{0, 1, 0, 1, 2, 0}};
++        check("T3 belady_reject cap=2 seq=0,1,0,1,2,0",
++              run_policy("belady_reject", "2", t, 3), 3, 3, 2, 0, 1);
++        check("T3 belady_forced cap=2 seq=0,1,0,1,2,0",
++              run_policy("belady_forced", "2", t, 3), 3, 3, 2, 1, 0);
++        check("T3 lru_forced cap=2 seq=0,1,0,1,2,0",
++              run_policy("lru_forced", "2", t, 3), 4, 2, 2, 2, 0);
++    }
++
++    // ---- T4: capacity override takes effect (same trace, cap 3 vs cap 2):
++    // three cold admits, two hits, zero evictions.
++    {
++        std::vector<std::vector<size_t>> t = {{0, 1, 2, 0, 1}};
++        check("T4 belady_forced cap=3 seq=0,1,2,0,1",
++              run_policy("belady_forced", "3", t, 3), 3, 2, 3, 0, 0);
++        check("T4 lru_forced cap=3 seq=0,1,2,0,1",
++              run_policy("lru_forced", "3", t, 3), 3, 2, 3, 0, 0);
++    }
++
++    // ---- T5: multi-task init (future-use index built over several task
++    // lists). capacity 2, task lists {0,1,2} and {2,0}: accesses 0,1,2,2,0.
++    //   iters: 0:[0,4,MAX] 1:[1,MAX] 2:[2,3,MAX]
++    //   belady_reject: 0(cold,next 4) 1(cold,SIZE_MAX) 2(miss: top=1's
++    //                  SIZE_MAX > 2's next 3 -> EVICT 1, install 2)
++    //                  2(hit) 0(hit) -> 3 misses, 1 evict, 0 reject
++    //   belady_forced: identical decisions here -> 3 misses, 1 evict
++    //   lru_forced:    2 evicts 0 (oldest); 0 at p4 misses, evicts 1
++    //                  -> 4 misses, 2 evicts
++    {
++        std::vector<std::vector<size_t>> t = {{0, 1, 2}, {2, 0}};
++        check("T5 belady_reject cap=2 tasks={0,1,2},{2,0}",
++              run_policy("belady_reject", "2", t, 3), 3, 2, 2, 1, 0);
++        check("T5 belady_forced cap=2 tasks={0,1,2},{2,0}",
++              run_policy("belady_forced", "2", t, 3), 3, 2, 2, 1, 0);
++        check("T5 lru_forced cap=2 tasks={0,1,2},{2,0}",
++              run_policy("lru_forced", "2", t, 3), 4, 1, 2, 2, 0);
++    }
++
++    if (failures == 0) {
++        printf("ALL POLICY UNIT TESTS PASS\n");
++        return 0;
++    }
++    printf("%d FAILURES\n", failures);
++    return 1;
++}
+diff --git a/utils/heap.h b/utils/heap.h
+--- a/utils/heap.h
++++ b/utils/heap.h
+@@ -100,14 +100,43 @@
+         _elem aux = storage[crawler];
+ 
+         while (!is_leaf(crawler)) {
++            // [GATE4B1] Fix of an upstream latent bug (isolated copy only).
++            // When crawler has a left son but NO right son
++            // (right_son_pos(crawler) == current_bound), the original
++            // operand order read right_son(crawler) — storage[2*crawler+1],
++            // i.e. storage[current_bound] — BEFORE this guard: a
++            // heap-buffer-overflow read when current_bound == max_size
++            // (full heap; ASan: READ of size 8 one past a 63x16B region),
++            // or a stale-slot read otherwise. The guard is now evaluated
++            // first (|| short-circuits the read); the logical value is
++            // unchanged whenever the original read was well defined (right
++            // son exists => both orders evaluate the same two operands).
++            // Reachable only via a key-DECREASING update() on a full heap:
++            // the reference belady policies only ever INCREASE keys on
++            // update (-> sift_up) and pop() sifts with current_bound
++            // already decremented (62, even => no right-son gap exists
++            // while sifting from pop), so the default path never hits it;
++            // the new lru_forced policy does (recency keys decrease on
++            // hit). Evidence: logs/prefix_crash_p3_lru_asan.stderr (real
++            // run) and logs/prefix_policy_test_asan.stderr (standalone
++            // unit-test reproduction, oracle/policy_test.cpp T3/T5).
+             if (!comparator(aux.second, left_son(crawler).second) &&
+-                (!comparator(right_son(crawler).second, left_son(crawler).second) ||
+-                 right_son_pos(crawler) == current_bound)) {
++                (right_son_pos(crawler) == current_bound ||
++                 !comparator(right_son(crawler).second, left_son(crawler).second))) {
+                 storage[crawler] = left_son(crawler);
+                 positions[left_son(crawler).first] = crawler;
+                 crawler = left_son_pos(crawler);
+             }
+-            else if (!comparator(aux.second, right_son(crawler).second)) {
++            // [GATE4B1] Same guard-first reordering on the right-son branch:
++            // reaching this branch with no right son (guard true) means the
++            // first condition failed, i.e. aux outranks its only (left) son,
++            // so the correct action is to stop. The original condition read
++            // right_son(crawler) = storage[current_bound] (stale slot, or OOB
++            // on a full heap) before this decision. Unreachable in the
++            // reference configurations (see comment above); fixed for the
++            // same reason, with identical defined-case semantics.
++            else if (right_son_pos(crawler) != current_bound &&
++                     !comparator(aux.second, right_son(crawler).second)) {
+                 storage[crawler] = right_son(crawler);
+                 positions[right_son(crawler).first] = crawler;
+                 crawler = right_son_pos(crawler);

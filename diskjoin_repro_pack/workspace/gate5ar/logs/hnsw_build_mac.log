@@ -1,0 +1,7 @@
+workspace/gate5ar/tests/hnsw_regression.cpp:50:21: error: cannot initialize a parameter of type 'size_t' (aka 'unsigned long') with an rvalue of type 'value_type *' (aka 'float *')
+   50 |     graph.searchKnn(x.data(), 24);
+      |                     ^~~~~~~~
+workspace/gate5ar/instrumented/DiskJoin/lib/hnswlib/hnswalg.h:1338:22: note: passing argument to parameter 'cluster_id' here
+ 1338 |     searchKnn(size_t cluster_id, size_t k, BaseFilterFunctor* isIdAllowed = nullptr) {
+      |                      ^
+1 error generated.

@@ -1,0 +1,4 @@
+hnsw_safety.patch PASS
+oracle_offset_and_validation.patch PASS
+disjoint_sampling.patch PASS
+upstream_to_gate5ar.patch PASS

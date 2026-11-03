@@ -1,0 +1,37 @@
+Checking patch diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/lib/hnswlib/hnswalg.h...
+
+hnsw_safety.patch PASS (no skipped patch)
+Checking patch diskjoin_repro_pack/workspace/gate5a/oracle/gt_calib.cpp...
+
+oracle_offset_and_validation.patch PASS (no skipped patch)
+Checking patch diskjoin_repro_pack/workspace/gate5a/oracle/sample_gt_endpoints.py => diskjoin_repro_pack/workspace/gate5a/oracle/sample_endpoints.py...
+
+disjoint_sampling.patch PASS (no skipped patch)
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/Cache.h...
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/ClusterIO.h...
+error: while searching for:
+        fcluster.close();
+        fmeta.close();
+        close(cluster_fd);
+        delete[] buffer;
+    }
+};diff --git a/lib/DiskJoin.h b/lib/DiskJoin.h
+
+error: patch failed: diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/ClusterIO.h:204
+error: diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/ClusterIO.h: patch does not apply
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/DiskJoin.h...
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/Gorder.h...
+error: while searching for:
+		rank[order[i]] = i;
+	}
+
+	return rank;
+}diff --git a/lib/hnswlib/hnswalg.h b/lib/hnswlib/hnswalg.h
+
+error: patch failed: diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/Gorder.h:99
+error: diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/Gorder.h: patch does not apply
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/lib/hnswlib/hnswalg.h...
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/oracle/policy_test.cpp...
+Checking patch diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/utils/heap.h...
+
+FAILED upstream_to_gate5ar.patch

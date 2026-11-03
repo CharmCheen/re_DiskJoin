@@ -1,0 +1,319 @@
+diff --git a/lib/hnswlib/hnswalg.h b/lib/hnswlib/hnswalg.h
+--- a/lib/hnswlib/hnswalg.h
++++ b/lib/hnswlib/hnswalg.h
+@@ -8,6 +8,7 @@
+ #include <assert.h>
+ #include <unordered_set>
+ #include <list>
++#include <stdexcept>
+ 
+ namespace hnswlib {
+ typedef unsigned int tableint;
+@@ -191,6 +192,46 @@
+     }
+ 
+ 
++    // Hints must not read beyond logical adjacency or construct invalid pointers.
++    // Invalid *consumed* neighbors fail closed; speculative lookahead is skipped.
++    inline size_t checkedDegree(linklistsizeint* links, size_t capacity,
++                                VisitedList* vl = nullptr) const {
++        size_t count = getListCount(links);
++        if (count > capacity) {
++            if (vl) visited_list_pool_->releaseVisitedList(vl);
++            throw std::runtime_error("gate5ar: invalid HNSW degree");
++        }
++        return count;
++    }
++
++    inline tableint checkedNeighbor(const tableint* ids, size_t count, size_t index,
++                                    VisitedList* vl = nullptr) const {
++        if (index >= count || ids[index] >= cur_element_count) {
++            if (vl) visited_list_pool_->releaseVisitedList(vl);
++            throw std::runtime_error("gate5ar: invalid HNSW neighbor");
++        }
++        return ids[index];
++    }
++
++    inline void prefetchNode(tableint id, const vl_type* visited = nullptr) const {
++        if (id >= cur_element_count) return;
++#if defined(USE_SSE) && !defined(GATE5AR_DISABLE_PREFETCH)
++        _mm_prefetch(getDataByInternalId(id), _MM_HINT_T0);
++        if (visited) {
++            _mm_prefetch(reinterpret_cast<const char*>(visited + id), _MM_HINT_T0);
++            if (max_elements_ - id > 64)
++                _mm_prefetch(reinterpret_cast<const char*>(visited + id + 64), _MM_HINT_T0);
++        }
++#else
++        (void)visited;
++#endif
++    }
++
++    inline void prefetchNeighbor(const tableint* ids, size_t count, size_t index,
++                                 const vl_type* visited = nullptr) const {
++        if (index < count) prefetchNode(ids[index], visited);
++    }
++
+     int getRandomLevel(double reverse_size) {
+         std::uniform_real_distribution<double> distribution(0.0, 1.0);
+         double r = -log(distribution(level_generator_)) * reverse_size;
+@@ -248,21 +289,18 @@
+                 data = (int*)get_linklist(curNodeNum, layer);
+ //                    data = (int *) (linkLists_[curNodeNum] + (layer - 1) * size_links_per_element_);
+             }
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, layer == 0 ? maxM0_ : maxM_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+ //                    if (candidate_id == 0) continue;
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -272,7 +310,7 @@
+                 if (top_candidates.size() < ef_construction_ || lowerBound > dist1) {
+                     candidateSet.emplace(-dist1, candidate_id);
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     if (!isMarkedDeleted(candidate_id))
+@@ -326,7 +364,7 @@
+ 
+             tableint current_node_id = current_node_pair.second;
+             int *data = (int *) get_linklist0(current_node_id);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+ //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+             if (collect_metrics) {
+                 // metric_hops++;
+@@ -334,19 +372,14 @@
+             }
+ 
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+-            _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
++            prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, 0, visited_array);
+ #endif
+ 
+             for (size_t j = 1; j <= size; j++) {
+-                int candidate_id = *(data + j);
++                tableint candidate_id = checkedNeighbor(reinterpret_cast<tableint*>(data + 1), size, j - 1, vl);
+ //                    if (candidate_id == 0) continue;
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+-                                _MM_HINT_T0);  ////////////
++                prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, j, visited_array);
+ #endif
+                 if (!(visited_array[candidate_id] == visited_array_tag)) {
+                     visited_array[candidate_id] = visited_array_tag;
+@@ -357,9 +390,7 @@
+                     if (top_candidates.size() < ef || lowerBound > dist) {
+                         candidate_set.emplace(-dist, candidate_id);
+ #ifdef USE_SSE
+-                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+-                                        offsetLevel0_,  ///////////
+-                                        _MM_HINT_T0);  ////////////////////////
++                        prefetchNode(candidate_set.top().second);
+ #endif
+ 
+                         if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
+@@ -406,21 +437,18 @@
+             candidateSet.pop();
+             tableint curNodeNum = curr_el_pair.second;
+             int *data = (int*)get_linklist0(curNodeNum);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+                 auto candidate_label = getExternalLabel(candidate_id);
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -431,7 +459,7 @@
+                     candidateSet.emplace(-dist1, candidate_id);
+ 
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     top_candidates.emplace(dist1, candidate_label);
+@@ -476,21 +504,18 @@
+             candidateSet.pop();
+             tableint curNodeNum = curr_el_pair.second;
+             int *data = (int*)get_linklist0(curNodeNum);
+-            size_t size = getListCount((linklistsizeint*)data);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
+             tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
+-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
++            prefetchNeighbor(datal, size, 0, visited_array);
++            prefetchNeighbor(datal, size, 1);
+ #endif
+ 
+             for (size_t j = 0; j < size; j++) {
+-                tableint candidate_id = *(datal + j);
++                tableint candidate_id = checkedNeighbor(datal, size, j, vl);
+                 auto candidate_label = getExternalLabel(candidate_id);
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                prefetchNeighbor(datal, size, j + 1, visited_array);
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;
+@@ -501,7 +526,7 @@
+                     candidateSet.emplace(-dist1, candidate_id);
+ 
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
++                    prefetchNode(candidateSet.top().second);
+ #endif
+ 
+                     top_candidates.emplace(dist1, candidate_label);
+@@ -1139,16 +1164,16 @@
+                     unsigned int *data;
+                     std::unique_lock <std::mutex> lock(link_list_locks_[currObj]);
+                     data = get_linklist_at_level(currObj, level);
+-                    int size = getListCount(data);
++                    int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+                     tableint *datal = (tableint *) (data + 1);
+ #ifdef USE_SSE
+-                    _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
++                    prefetchNeighbor(datal, size, 0);
+ #endif
+                     for (int i = 0; i < size; i++) {
+ #ifdef USE_SSE
+-                        _mm_prefetch(getDataByInternalId(*(datal + i + 1)), _MM_HINT_T0);
+-#endif
+-                        tableint cand = datal[i];
++                        prefetchNeighbor(datal, size, i + 1);
++#endif
++                        tableint cand = checkedNeighbor(datal, size, i);
+                         dist_t d = fstdistfunc_(dataPoint, getDataByInternalId(cand), dist_func_param_);
+                         if (d < curdist) {
+                             curdist = d;
+@@ -1194,7 +1219,7 @@
+     std::vector<tableint> getConnectionsWithLock(tableint internalId, int level) {
+         std::unique_lock <std::mutex> lock(link_list_locks_[internalId]);
+         unsigned int *data = get_linklist_at_level(internalId, level);
+-        int size = getListCount(data);
++        int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+         std::vector<tableint> result(size);
+         tableint *ll = (tableint *) (data + 1);
+         memcpy(result.data(), ll, size * sizeof(tableint));
+@@ -1252,7 +1277,7 @@
+         memset(data_level0_memory_ + cur_c * size_data_per_element_ + offsetLevel0_, 0, size_data_per_element_);
+ 
+         // Initialisation of the data and label
+-        memcpy(getExternalLabeLp(cur_c), &label, sizeof(labeltype));
++        setExternalLabel(cur_c, label); // Byte-addressed write avoids unaligned labeltype*.
+         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
+ 
+         if (curlevel) {
+@@ -1272,11 +1297,11 @@
+                         unsigned int *data;
+                         std::unique_lock <std::mutex> lock(link_list_locks_[currObj]);
+                         data = get_linklist(currObj, level);
+-                        int size = getListCount(data);
++                        int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+ 
+                         tableint *datal = (tableint *) (data + 1);
+                         for (int i = 0; i < size; i++) {
+-                            tableint cand = datal[i];
++                            tableint cand = checkedNeighbor(datal, size, i);
+                             if (cand < 0 || cand > max_elements_)
+                                 throw std::runtime_error("cand error");
+                             dist_t d = fstdistfunc_(data_point, getDataByInternalId(cand), dist_func_param_);
+@@ -1335,13 +1360,13 @@
+                 unsigned int *data;
+ 
+                 data = (unsigned int *) get_linklist(currObj, level);
+-                int size = getListCount(data);
++                int size = checkedDegree(data, level == 0 ? maxM0_ : maxM_);
+                 // metric_hops++;
+                 // metric_distance_computations+=size;
+ 
+                 tableint *datal = (tableint *) (data + 1);
+                 for (int i = 0; i < size; i++) {
+-                    tableint cand = datal[i];
++                    tableint cand = checkedNeighbor(datal, size, i);
+                     if (cand < 0 || cand > max_elements_)
+                         throw std::runtime_error("cand error");
+                     dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+@@ -1418,21 +1443,16 @@
+ 
+             tableint current_node_id = current_node_pair.second;
+             int *data = (int *) get_linklist0(current_node_id);
+-            size_t size = getListCount((linklistsizeint*)data);
+-
+-#ifdef USE_SSE
+-            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+-            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+-            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+-            _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
++            size_t size = checkedDegree((linklistsizeint*)data, maxM0_, vl);
++
++#ifdef USE_SSE
++            prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, 0, visited_array);
+ #endif
+ 
+             for (size_t j = 1; j <= size; j++) {
+-                int candidate_id = *(data + j);
+-#ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+-                                _MM_HINT_T0);  ////////////
++                tableint candidate_id = checkedNeighbor(reinterpret_cast<tableint*>(data + 1), size, j - 1, vl);
++#ifdef USE_SSE
++                prefetchNeighbor(reinterpret_cast<tableint*>(data + 1), size, j, visited_array);
+ #endif
+                 if (!(visited_array[candidate_id] == visited_array_tag)) {
+                     visited_array[candidate_id] = visited_array_tag;
+@@ -1442,9 +1462,7 @@
+                     check_num++;
+                     candidate_set.emplace(-dist, candidate_id);
+ #ifdef USE_SSE
+-                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+-                                        offsetLevel0_,  ///////////
+-                                        _MM_HINT_T0);  ////////////////////////
++                        prefetchNode(candidate_set.top().second);
+ #endif
+                     top_candidates.emplace(dist, candidate_id);
+                     if (top_candidates.size() > k) top_candidates.pop();

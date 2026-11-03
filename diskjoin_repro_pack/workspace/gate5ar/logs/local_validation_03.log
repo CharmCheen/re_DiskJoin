@@ -1,0 +1,16 @@
+test_frozen_oracle_header_offset_reproducer (test_correctness.OracleTests.test_frozen_oracle_header_offset_reproducer) ... ok
+test_last_four_dimensions_calib_and_gt (test_correctness.OracleTests.test_last_four_dimensions_calib_and_gt) ... ok
+test_random_cross_implementation (test_correctness.OracleTests.test_random_cross_implementation) ... ok
+test_reject_bad_inputs_and_overwrite (test_correctness.OracleTests.test_reject_bad_inputs_and_overwrite) ... ok
+test_disjoint_reproducible_split (test_correctness.StatisticsTests.test_disjoint_reproducible_split) ... ok
+test_pair_validation_includes_empty_gt_fp (test_correctness.StatisticsTests.test_pair_validation_includes_empty_gt_fp) ... ok
+test_undefined_and_degenerate_intervals (test_correctness.StatisticsTests.test_undefined_and_degenerate_intervals) ... ok
+test_weighted_mean_precision_and_empty_endpoint (test_correctness.StatisticsTests.test_weighted_mean_precision_and_empty_endpoint) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.674s
+
+OK
+AST/Bash/prefetch checks PASS; 2071 prior files unchanged
+hnsw regression digest=12385809373267807141
+Scalar sanitizer regression PASS. Linux SSE/AVX2/OpenMP/O_DIRECT remain unverified here.
