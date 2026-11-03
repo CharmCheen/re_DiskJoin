@@ -1,0 +1,165 @@
+// Gate 4B-1 standalone unit test for the GATE4B1 cache-policy selector
+// and the GATE4B1_CAPACITY override.
+//
+// Constructs Cache directly (no DiskJoin, no I/O), feeds hand-computed
+// access sequences and checks the mechanism counters of each policy against
+// expected values derived by hand from the semantics in lib/Cache.h.
+//
+// Counter conventions (original Cache semantics, unchanged): `admit` counts
+// ONLY cold admissions (filled < size); a bucket installed by evicting a
+// victim counts once under `evict` and NOT under `admit` (verified against
+// the reference runs: admit == capacity == 62).
+//
+// Policies:
+//   belady_reject (default): cold-admit; evict farthest-next-use resident
+//                 iff its next use is strictly later than the incoming's;
+//                 else reject (incoming data already in the scratch buffer).
+//   belady_forced: forced load; victim = farthest next use (SIZE_MAX = +inf).
+//   lru_forced:    forced load; victim = least recently used (recency key
+//                 SIZE_MAX - access index: largest key = oldest = heap top).
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include "../lib/Cache.h"
+
+static int failures = 0;
+
+static void expect(const char* what, size_t got, size_t want) {
+    if (got != want) {
+        printf("  FAIL %-28s got %zu want %zu\n", what, got, want);
+        failures++;
+    } else {
+        printf("  ok   %-28s = %zu\n", what, got);
+    }
+}
+
+struct Counters {
+    size_t total, hit, miss, admit, evict, reject;
+};
+
+static Counters run_policy(const char* policy, const char* capacity,
+                           const std::vector<std::vector<size_t>>& tasks,
+                           size_t n) {
+    setenv("GATE4B1_POLICY", policy, 1);
+    setenv("GATE4B1_CAPACITY", capacity, 1);
+    unsetenv("GATE4A_CACHE_TRACE");
+    Cache cache(1024, 16); // budget-derived size (16) is overridden by env
+    cache.init(tasks, n);
+    std::vector<float> scratch(16, 0.0f);
+    for (auto& t : tasks) {
+        for (size_t id : t) {
+            if (!cache.find(id, scratch.data(), 8)) {
+                cache.push(id, scratch.data(), 8);
+            }
+        }
+    }
+    Counters c;
+    c.total = cache.total;
+    c.hit = cache.hit;
+    c.miss = cache.total - cache.hit;
+    c.admit = cache.admit;
+    c.evict = cache.evict;
+    c.reject = cache.reject;
+    return c;
+}
+
+static void check(const char* name, const Counters& c,
+                  size_t miss, size_t hit, size_t admit, size_t evict, size_t reject) {
+    printf("[%s]\n", name);
+    expect("miss", c.miss, miss);
+    expect("hit", c.hit, hit);
+    expect("admit(cold only)", c.admit, admit);
+    expect("evict", c.evict, evict);
+    expect("reject", c.reject, reject);
+}
+
+int main() {
+    // ---- T1: minimal reject counterexample. capacity 1, accesses 0,1,0
+    // (bucket 1 is never used again).
+    //   belady_reject: 0(miss,cold admit) 1(miss,reject: victim next=2 is
+    //                  NOT strictly later than SIZE_MAX) 0(hit) -> 2 misses
+    //   belady_forced: 0(cold) 1(miss,evict 0,install) 0(miss,evict 1,
+    //                  install) -> 3 misses, 2 evicts, 1 cold admit
+    //   lru_forced:    same forced shape -> 3 misses
+    {
+        std::vector<std::vector<size_t>> t = {{0, 1, 0}};
+        check("T1 belady_reject cap=1 seq=0,1,0",
+              run_policy("belady_reject", "1", t, 2), 2, 1, 1, 0, 1);
+        check("T1 belady_forced cap=1 seq=0,1,0",
+              run_policy("belady_forced", "1", t, 2), 3, 0, 1, 2, 0);
+        check("T1 lru_forced cap=1 seq=0,1,0",
+              run_policy("lru_forced", "1", t, 2), 3, 0, 1, 2, 0);
+    }
+
+    // ---- T2: cyclic thrash. capacity 2, accesses 0,1,2,0,1.
+    //   iters: 0:[0,3,MAX] 1:[1,4,MAX] 2:[2,MAX]
+    //   belady_reject: 0(cold) 1(cold) 2(miss,reject: top next=4 not >
+    //                  SIZE_MAX) 0(hit) 1(hit) -> 3 misses, 1 reject
+    //   belady_forced: 2 evicts 1 (next 4) and installs; 0 hits; 1 misses
+    //                  again (evicts a MAX-tie victim)  -> 4 misses
+    //   lru_forced:    classic LRU thrash: every access misses -> 5 misses
+    {
+        std::vector<std::vector<size_t>> t = {{0, 1, 2, 0, 1}};
+        check("T2 belady_reject cap=2 seq=0,1,2,0,1",
+              run_policy("belady_reject", "2", t, 3), 3, 2, 2, 0, 1);
+        check("T2 belady_forced cap=2 seq=0,1,2,0,1",
+              run_policy("belady_forced", "2", t, 3), 4, 1, 2, 2, 0);
+        check("T2 lru_forced cap=2 seq=0,1,2,0,1",
+              run_policy("lru_forced", "2", t, 3), 5, 0, 2, 3, 0);
+    }
+
+    // ---- T3: Belady-victim vs LRU-victim within the SAME forced action
+    // set. capacity 2, accesses 0,1,0,1,2,0.
+    //   iters: 0:[0,2,5,MAX] 1:[1,3,MAX] 2:[4,MAX]
+    //   belady_reject: 0(cold) 1(cold) 0(h) 1(h) 2(miss,reject: top=1's
+    //                  SIZE_MAX not > 2's SIZE_MAX) 0(hit) -> 3 misses
+    //   belady_forced: 2 evicts 1 (next SIZE_MAX > 0's next 5) and installs;
+    //                  0 still resident -> hit -> 3 misses, 1 evict
+    //   lru_forced:    2 evicts 0 (least recently used: 0 last at p2, 1 at
+    //                  p3); 0 at p5 misses and evicts 1 -> 4 misses
+    {
+        std::vector<std::vector<size_t>> t = {{0, 1, 0, 1, 2, 0}};
+        check("T3 belady_reject cap=2 seq=0,1,0,1,2,0",
+              run_policy("belady_reject", "2", t, 3), 3, 3, 2, 0, 1);
+        check("T3 belady_forced cap=2 seq=0,1,0,1,2,0",
+              run_policy("belady_forced", "2", t, 3), 3, 3, 2, 1, 0);
+        check("T3 lru_forced cap=2 seq=0,1,0,1,2,0",
+              run_policy("lru_forced", "2", t, 3), 4, 2, 2, 2, 0);
+    }
+
+    // ---- T4: capacity override takes effect (same trace, cap 3 vs cap 2):
+    // three cold admits, two hits, zero evictions.
+    {
+        std::vector<std::vector<size_t>> t = {{0, 1, 2, 0, 1}};
+        check("T4 belady_forced cap=3 seq=0,1,2,0,1",
+              run_policy("belady_forced", "3", t, 3), 3, 2, 3, 0, 0);
+        check("T4 lru_forced cap=3 seq=0,1,2,0,1",
+              run_policy("lru_forced", "3", t, 3), 3, 2, 3, 0, 0);
+    }
+
+    // ---- T5: multi-task init (future-use index built over several task
+    // lists). capacity 2, task lists {0,1,2} and {2,0}: accesses 0,1,2,2,0.
+    //   iters: 0:[0,4,MAX] 1:[1,MAX] 2:[2,3,MAX]
+    //   belady_reject: 0(cold,next 4) 1(cold,SIZE_MAX) 2(miss: top=1's
+    //                  SIZE_MAX > 2's next 3 -> EVICT 1, install 2)
+    //                  2(hit) 0(hit) -> 3 misses, 1 evict, 0 reject
+    //   belady_forced: identical decisions here -> 3 misses, 1 evict
+    //   lru_forced:    2 evicts 0 (oldest); 0 at p4 misses, evicts 1
+    //                  -> 4 misses, 2 evicts
+    {
+        std::vector<std::vector<size_t>> t = {{0, 1, 2}, {2, 0}};
+        check("T5 belady_reject cap=2 tasks={0,1,2},{2,0}",
+              run_policy("belady_reject", "2", t, 3), 3, 2, 2, 1, 0);
+        check("T5 belady_forced cap=2 tasks={0,1,2},{2,0}",
+              run_policy("belady_forced", "2", t, 3), 3, 2, 2, 1, 0);
+        check("T5 lru_forced cap=2 tasks={0,1,2},{2,0}",
+              run_policy("lru_forced", "2", t, 3), 4, 1, 2, 2, 0);
+    }
+
+    if (failures == 0) {
+        printf("ALL POLICY UNIT TESTS PASS\n");
+        return 0;
+    }
+    printf("%d FAILURES\n", failures);
+    return 1;
+}

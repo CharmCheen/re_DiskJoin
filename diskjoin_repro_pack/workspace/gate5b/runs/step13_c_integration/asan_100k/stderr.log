@@ -1,0 +1,32 @@
+[gate4a-writer] cluster_num=1000 d=128 budget_bytes=5120000 buffer_size=5120 buffer_vectors=10 total_buffer_bytes=5120000 min_ok=1
+[gate4a-gorder] n=1000 n2=1000 window=2 insertions=1000 window_removals=998 perm_ok=1
+[gate4b0] order=default window=2 window_default=2
+[gate4a-config] n=100000 d=128 cluster_num=1000 max_points=348 budget_bytes=5120000 length=44544 capacity_slots=28 K=24 window=2 window_lt_cluster_num=1 capacity_lt_cluster_num=1 writer_buffer_bytes=5120 writer_buffer_vectors=10 error_bound=0.1 radius=73984 task_num_total=13011 max_task_num=24
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate4a-cache] capacity_slots=28 length=44544 budget_bytes=5120000 filled=28 total=13011 hit=7819 miss=5192 admit=28 evict=3437 reject=1727
+[gate4b1-io] read_calls=5192 effective_bytes=286884352 requested_aligned_bytes=305594368 page_size=4096
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/pairs.txt pairs=3855811 threads=1 streamed=1 bytes=45411278
+	Command being timed: "timeout 900 /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_build/main /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/config"
+	User time (seconds): 13.21
+	System time (seconds): 0.38
+	Percent of CPU this job got: 47%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:28.57
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 471736
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 147347
+	Voluntary context switches: 8915
+	Involuntary context switches: 3076
+	Swaps: 0
+	File system inputs: 596864
+	File system outputs: 192792
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

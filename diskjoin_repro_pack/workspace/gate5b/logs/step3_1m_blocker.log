@@ -1,0 +1,43 @@
+# Gate 5B Step 3/4: 1M blocker, cost model, change inventory
+# date: 2026-11-03T12:39:27+08:00  host: amax  HEAD: 980bc3956dd2f16f5f521783f7314430262a9966
+
+=== machine state / capacity ===
+ 12:39:27 up 144 days, 22:43,  3 users,  load average: 0.25, 0.34, 0.23
+24
+model name	: Intel(R) Xeon(R) Silver 4310 CPU @ 2.10GHz
+               total        used        free      shared  buff/cache   available
+Mem:            62Gi       3.4Gi        42Gi        20Mi        16Gi        58Gi
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda2       879G   20G  815G   3% /
+/dev/sdb1       7.3T   28K  6.9T   1% /data
+
+=== 100K measured cost (gate5b regression) ===
+normal: 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.35 | 	Maximum resident set size (kbytes): 88044 | 	File system inputs: 596864 | 	File system outputs: 193904
+prefetch_off: 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.84 | 	Maximum resident set size (kbytes): 87972 | 	File system inputs: 596864 | 	File system outputs: 193904
+derived sizes (100K):
+49M	runs/step2_100k/normal/data.clusters
+1.3M	runs/step2_100k/normal/data.metadata
+680K	runs/step2_100k/normal/data.hnsw
+44M	runs/step2_100k/normal/pairs.txt
+
+=== 1M extrapolation (from measured 100K) ===
+data bytes: 100K=51,200,000 -> 1M=512,000,000 (x10); cache 10%%: 5,120,000 -> 51,200,000 B
+measured 100K join+build wall 7.35 s, RSS ~88 MB, derived disk ~95 MB (clusters 49M+meta 1.3M+hnsw .68M+pairs 44M)
+pairs at fixed radius grow ~O(n*degree), degree ~x10 at 1M => pairs ~x100 (~385M, ~4.6 GB text)
+derived disk 1M estimate: clusters ~512 MB + metadata ~9 MB + hnsw ~7 MB + pairs ~4.6 GB ~= 5.1 GB
+  => EXCEEDS the 5 GiB new-disk budget before accounting for GT/tasks/trace/asan + two modes.
+time 1M estimate: build ~+30-60 s, join dist_comp ~100x 154M = ~15.4G @ ~22M/s ~= 11-12 min,
+  x2 modes + GT(200x1Mx128) + asan => clearly over the 30-minute budget.
+
+=== Step 4 decision ===
+BigANN1M data ABSENT + downloads forbidden => Step 3 data validation and Step 4 execution BLOCKED.
+Estimated 1M cost is also at/over the 5 GiB disk and 30-minute budgets, so no 1M run is started.
+A 100K sanitizer pass is NOT a substitute for the (not run) 1M sanitizer.
+=== change inventory (gate5b vs gate5ar frozen copies) ===
+--- instrumented read path ---
+55
+--- manifest-driven oracle/scripts ---
+oracle/independent_check.py: 19 changed lines vs gate5ar
+oracle/sample_endpoints.py: 16 changed lines vs gate5ar
+oracle/gt_calib.cpp: 19 changed lines vs gate5ar
+scripts/validate_run.py: 10 changed lines vs gate5ar

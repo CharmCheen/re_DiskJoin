@@ -1,0 +1,51 @@
+# Gate 5B Step 2 addendum: 100K ASan+UBSan on the PATCHED read path
+# date: 2026-11-03T12:40:18+08:00  patched ClusterIO.h: 66c4f4dc903258ae86f85933befca5d002407d9f2f68477d7c906836ea2baac4
+
+### cmake asan
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+ok
+### build asan
+ok
+awk: cannot open ../gate5a/runs/server_run_20261103_1138/normal/config (No such file or directory)
+### run asan
+run rc=0
+
+### sanitizer scan (actual logs)
+0
+### RSS
+	Maximum resident set size (kbytes): 619740
+
+### output consistency: asan vs normal
+knn.txt equal=YES
+tasks.txt equal=YES
+pairs.txt equal=YES
+trace.txt equal=YES
+data.metadata equal=YES
+data.hnsw equal=YES
+data.clusters equal=YES
+
+=== CORRECTION: gt config source path ===
+gt(from gate5ar diagnostic) = 3
+run rc=0
+sanitizer hits: 0
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+RSS: 	Maximum resident set size (kbytes): 619900
+
+asan vs normal equality:
+  knn.txt equal=YES
+  tasks.txt equal=YES
+  pairs.txt equal=YES
+  trace.txt equal=YES
+  data.metadata equal=YES
+  data.hnsw equal=YES
+  data.clusters equal=YES
+
+NOTE: this is a 100K sanitizer pass and does NOT substitute for the (not run) 1M sanitizer.

@@ -1,0 +1,158 @@
+# Gate 5B Step 3: validated data manifest + 1M blocker
+# date: 2026-11-03T12:38:01+08:00  host: amax
+
+=== 3a. server-wide BigANN1M search (downloads forbidden) ===
+repo data files (.fbin/.bvecs/.gz):
+-rw-rw-r-- 1 qch qch 13200000 11月  2 21:08 /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.bvecs
+-rw-rw-r-- 1 qch qch 51200008 11月  2 21:08 /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.fbin
+
+non-repo large data candidates:
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b0/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5ar/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/source_snapshot/DiskJoin-aa86151f97527b1dcf9a032d523c1d67d892454a/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build/prefix/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/configs/bigann100M_R0.99.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_R0.9.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_M5.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_M15.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_R0.8.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_M20.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_R0.95.config
+/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin/configs/bigann100M_R0.99.config
+(none besides gate5a 100K + prefix24m)
+
+=== 3b. generate validated manifest for the only real dataset (100K) ===
+manifest OK: data/manifest_bigann100k.json n=100000 d=128 fbin_bytes=51200008
+rc=0
+
+=== 3c. negative controls: generator must REJECT bad/mis-sized data ===
+truncated fbin -> rejected (good)
+wrong expect-n -> rejected (good)
+
+=== 3d. manifest contents ===
+{
+  "name": "bigann100k",
+  "n": 100000,
+  "dimension": 128,
+  "fbin": {
+    "path": "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.fbin",
+    "bytes": 51200008,
+    "header_n": 100000,
+    "header_d": 128,
+    "sha256": "d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1"
+  },
+  "record_layout": {
+    "fbin": "uint32 n, uint32 d, then n*d float32 (little-endian)",
+    "bvecs": "per record: uint32 dimension prefix, then dimension uint8"
+  },
+  "provenance": "Gate5A 100K subset of BigANN (base.1B); bvecs<->fbin conversion cross-checked by oracle/independent_check.py",
+  "bvecs": {
+    "path": "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.bvecs",
+    "bytes": 13200000,
+    "header_d": 128,
+    "records_checked": 100000,
+    "sha256": "cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3"
+  }
+}
+
+=== 3e. rebuild manifest-driven oracle ===
+gt_calib build ok
+
+=== 3f. regenerate split from manifest (must match gate5ar seed split) ===
+calibration.txt new=67b88114505e3da9 gate5ar=67b88114505e3da9 equal=YES
+evaluation.txt new=b986551f055a1a63 gate5ar=b986551f055a1a63 equal=YES
+diagnostic.txt new=9a271f2a916b0b6e gate5ar=9a271f2a916b0b6e equal=YES
+manifest.json new=3b3a14a25c2cedde gate5ar=3b3a14a25c2cedde equal=YES
+
+=== 3g. full-neighborhood GT (m=272) via manifest-bounded oracle ===
+gt ok
+diagnostic ok
+gt.txt new=69f3452addcc5c7d gate5ar=69f3452addcc5c7d equal=YES
+diagnostic.txt new=6aef57ecebd0e154 gate5ar=6aef57ecebd0e154 equal=YES
+
+=== 3h. independent distance/conversion check (>=3 endpoints + diagnostic) ===
+{
+  "n": 100000,
+  "d": 128,
+  "conversion": "all coordinates equal",
+  "independent_endpoints": [
+    0,
+    1786,
+    2878,
+    3008
+  ],
+  "threshold": 73984,
+  "sha256": {
+    "../gate5a/data/bigann100k.bvecs": "cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3",
+    "../gate5a/data/bigann100k.fbin": "d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1"
+  }
+}
+
+=== 3i. negative control: oracle refuses n above manifest bound ===
+gate5ar oracle: bounded oracle: n exceeds manifest bound
+rejected >bound (good)

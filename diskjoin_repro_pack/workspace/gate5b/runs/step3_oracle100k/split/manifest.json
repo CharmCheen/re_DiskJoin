@@ -1,0 +1,21 @@
+{
+  "n": 100000,
+  "dimension": 128,
+  "calibration_n": 2000,
+  "evaluation_n": 200,
+  "calibration_seed": 2026110301,
+  "evaluation_seed": 2026110302,
+  "diagnostic": [
+    0
+  ],
+  "overlap": 0,
+  "python": "3.10.12 (main, Jul 29 2024, 16:56:48) [GCC 11.4.0]",
+  "design": "SRS without replacement from 1..n-1; evaluation from calibration complement",
+  "inference_population": "conditional on calibration: nonzero calibration complement",
+  "limitation": "Endpoint holdout shares the same vector corpus and graph; no dataset-level replication.",
+  "sha256": {
+    "calibration.txt": "67b88114505e3da9f0582e0235b18e298a61c2eb7fe00eb75490c060d1cd2780",
+    "diagnostic.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "evaluation.txt": "b986551f055a1a6378aae8f132537ec4e5a332ff7d78419259b18006bd792dba"
+  }
+}

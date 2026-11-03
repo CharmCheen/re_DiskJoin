@@ -1,0 +1,104 @@
+--- runs/step13_c_integration/inputs/DiskJoin.h.before	2026-11-03 16:13:49.216157949 +0800
++++ instrumented/DiskJoin/lib/DiskJoin.h	2026-11-03 16:41:58.735661783 +0800
+@@ -13,6 +13,7 @@
+ #include "Gorder.h"
+ #include "Cache.h"
+ #include "ConfigReader.h"
++#include "gate13_l2.h"   // [GATE13] fixed-128 blocked compute path
+ 
+ struct DiskJoin {
+     void build(ConfigReader config) {
+@@ -288,6 +289,14 @@
+         // distance logic are untouched; only the output sink is replaced by a
+         // counter. Requires GATE3_PAIR_OUT to be set.
+         const bool gate3_count_only = gate3_pair_out && getenv("GATE3_COUNT_ONLY");
++        // [GATE13] env-gated fixed-128 blocked compute path. When GATE13_C_PATH
++        // is set AND the runtime dimension is exactly 128, the two point-point
++        // loops below compute a small block of candidate distances with vec1
++        // held in registers (lib/gate13_l2.h) and then apply the ORIGINAL
++        // judgment per result. Candidates, the upper-triangle filter, the
++        // threshold, task order, output order and float accumulation are
++        // unchanged; unset (or d != 128) -> byte-identical original loop.
++        const bool gate13_c = (getenv("GATE13_C_PATH") != nullptr) && (d == 128);
+         // [GATE5B-1M] optional STREAMING pair dump. The default path buffers all
+         // pairs in RAM before writing (fine at 100K, ~6 GB at 1M). When
+         // GATE3_PAIR_STREAM=1 and OMP_NUM_THREADS=1, pairs are written in the
+@@ -353,6 +362,70 @@
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+                 float* vec1 = data.data() + j * d;
++                if (gate13_c) {
++                    // [GATE13] blocked fixed-128 compute path. Candidates, the
++                    // upper-triangle filter, the strict `dist < epsilon*epsilon`
++                    // test, emit order and float accumulation are identical to
++                    // the original loop; only the point-point distances are
++                    // computed a block at a time with vec1 held in registers.
++                    {
++                        const size_t nbs = bucket_sizes[target_cluster];
++                        size_t l = 0;
++                        while (l < nbs) {
++                            const float* g_v2[GATE13_BLK]; size_t g_id[GATE13_BLK]; float g_d[GATE13_BLK];
++                            int gcnt = 0;
++                            while (l < nbs && gcnt < GATE13_BLK) {
++                                size_t id2 = assignment[target_cluster][l];
++                                if (id2 < id1) {
++                                    g_v2[gcnt] = data.data() + l * d;
++                                    g_id[gcnt] = id2;
++                                    gcnt++;
++                                }
++                                l++;
++                            }
++                            if (gcnt) gate13_l2sq_block128(vec1, g_v2, gcnt, g_d);
++                            for (int b = 0; b < gcnt; b++) {
++                                float dist = g_d[b];
++                                size_t id2 = g_id[b];
++                                dist_comp++;
++                                if (dist < epsilon * epsilon) {
++                                    if (id1 % 100000 == 0) count++;
++                                    if (id2 % 100000 == 0) count++;
++                                    if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
++                                }
++                            }
++                        }
++                    }
++                    for (int k = 1; k < target_tasks.size(); k++) {
++                        auto neighbor_cluster = target_tasks[k];
++                        // Point-to-centroid call kept exactly as in the original
++                        // loop (its result is unused there too).
++                        float dist = dist_l2(vec1, centroids + neighbor_cluster * d, &d);
++                        (void)dist;
++                        const size_t nbn = bucket_sizes[neighbor_cluster];
++                        size_t l = 0;
++                        while (l < nbn) {
++                            const float* g_v2[GATE13_BLK]; size_t g_id[GATE13_BLK]; float g_d[GATE13_BLK];
++                            int gcnt = 0;
++                            while (l < nbn && gcnt < GATE13_BLK) {
++                                g_v2[gcnt] = data.data() + k * length + l * d;
++                                g_id[gcnt] = assignment[neighbor_cluster][l];
++                                gcnt++; l++;
++                            }
++                            if (gcnt) gate13_l2sq_block128(vec1, g_v2, gcnt, g_d);
++                            for (int b = 0; b < gcnt; b++) {
++                                float dist1 = g_d[b];
++                                size_t id2 = g_id[b];
++                                dist_comp++;
++                                if (dist1 < epsilon * epsilon) {
++                                    if (id1 % 100000 == 0) count++;
++                                    if (id2 % 100000 == 0) count++;
++                                    if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
++                                }
++                            }
++                        }
++                    }
++                } else {
+                 for (size_t l = 0; l < bucket_sizes[target_cluster]; l++) {
+                     auto id2 = assignment[target_cluster][l];
+                     if (id2 >= id1) continue;
+@@ -381,6 +454,7 @@
+                         };
+                     }
+                 }
++                }
+             }
+             gacc(g_cp_w0, g_cp_c0, P_COMPUTE);
+         }

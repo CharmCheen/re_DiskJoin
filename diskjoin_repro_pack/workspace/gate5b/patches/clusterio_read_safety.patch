@@ -1,0 +1,95 @@
+# Gate 5B minimal patch: ClusterIO read-failure handling (O_DIRECT path)
+# base: workspace/gate5ar/instrumented/DiskJoin/lib/ClusterIO.h (6647f183...)
+# target: workspace/gate5b/instrumented/DiskJoin/lib/ClusterIO.h
+# apply with: patch -p0 (paths below are source-tree relative)
+
+--- workspace/gate5ar/instrumented/DiskJoin/lib/ClusterIO.h	2026-11-03 11:34:01.240441970 +0800
++++ workspace/gate5b/instrumented/DiskJoin/lib/ClusterIO.h	2026-11-03 12:32:34.825938794 +0800
+@@ -6,6 +6,9 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <string.h>
++#include <cstring>
++#include <cerrno>
++#include <stdexcept>
+ #include <cstdlib>
+ #include <cstdio>
+ #include <omp.h>
+@@ -174,7 +177,15 @@
+         fmeta(metafile, std::ios::binary | std::ios::in),
+         total(0),
+         used(0) {
++        // [GATE5B] fail fast if the input streams could not be opened, instead
++        // of dereferencing/reading from invalid streams later.
++        if (!fcluster || !fmeta)
++            throw std::runtime_error("ClusterIO: cannot open cluster/metadata file");
+         cluster_fd = open(clusterfile.c_str(), O_RDONLY | O_DIRECT);
++        // [GATE5B] the O_DIRECT descriptor is the only bucket-read path; an
++        // unchecked -1 would make every later read fail silently/stale.
++        if (cluster_fd < 0)
++            throw std::runtime_error(std::string("ClusterIO: open(O_DIRECT) failed: ") + std::strerror(errno));
+     }
+ 
+     void readMetaData() {
+@@ -193,6 +204,11 @@
+             assignment[i].resize(bucket_sizes[i]);
+             fmeta.read((char*)assignment[i].data(), bucket_sizes[i] * sizeof(size_t));
+         }
++        // [GATE5B] every metadata byte is required; a truncated/short metadata
++        // file must fail loudly instead of leaving zero-filled/uninitialised
++        // bucket_sizes/centroids/assignment silently in use.
++        if (!fmeta)
++            throw std::runtime_error("ClusterIO: metadata file truncated or unreadable");
+ 
+         file_pos.resize(cluster_num);
+         size_t cumu_size = 0;
+@@ -206,9 +222,30 @@
+         buffer = (char*)aligned_alloc(PAGE_SIZE, buffer_size * max_task_size);
+     }
+ 
++    // [GATE5B] Read exactly `len` bytes from `fd`, retrying on EINTR and
++    // failing fast on EOF, a short read, or any other error. It never returns
++    // with the destination partially or stale-filled. Public+static so the
++    // read-failure/short-read/EINTR behaviour is unit-testable directly.
++    static void readExactOrThrow(int fd, char* dst, size_t len) {
++        size_t got = 0;
++        while (got < len) {
++            ssize_t r = ::read(fd, dst + got, len - got);
++            if (r < 0) {
++                if (errno == EINTR) continue;
++                throw std::runtime_error(std::string("ClusterIO: read failed: ") + std::strerror(errno));
++            }
++            if (r == 0)
++                throw std::runtime_error("ClusterIO: unexpected EOF (cluster file truncated)");
++            got += (size_t)r;
++        }
++    }
++
+     void readCluster(size_t cluster_id, float* buffer) {
+         fcluster.seekg(file_pos[cluster_id], std::ios::beg);
+         fcluster.read((char*)buffer, bucket_sizes[cluster_id] * d * 4);
++        // [GATE5B] buffered read must also be complete.
++        if (!fcluster)
++            throw std::runtime_error("ClusterIO: buffered cluster read failed or short");
+     }
+ 
+     void posixDirectReadCluster(size_t cluster_id, float* data_buffer) {
+@@ -219,8 +256,16 @@
+         total += aligned_read_size;
+         used += read_size;
+         reads++; // [GATE4B1]
+-        lseek(cluster_fd, file_offset, SEEK_SET);
+-        auto count = read(cluster_fd, buffer, aligned_read_size);
++        // [GATE5B] lseek must succeed, otherwise the following read would land
++        // at the wrong offset. file_offset/aligned_read_size stay PAGE_SIZE
++        // multiples, satisfying the O_DIRECT alignment constraint.
++        if (lseek(cluster_fd, (off_t)file_offset, SEEK_SET) == (off_t)-1)
++            throw std::runtime_error(std::string("ClusterIO: lseek failed: ") + std::strerror(errno));
++        // [GATE5B] full aligned read with EINTR/short-read/EOF handling. A
++        // short read must NOT fall through to the memcpy: `buffer` is reused
++        // across calls, so the un-overwritten tail would be stale data from a
++        // previous bucket.
++        readExactOrThrow(cluster_fd, buffer, aligned_read_size);
+         memcpy(data_buffer, buffer + buffer_offset, read_size);
+     }
+ 

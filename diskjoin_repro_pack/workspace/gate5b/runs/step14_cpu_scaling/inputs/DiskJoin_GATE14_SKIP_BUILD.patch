@@ -1,0 +1,17 @@
+--- runs/step14_cpu_scaling/inputs/DiskJoin.h.before_step14	2026-11-03 16:41:58.735661783 +0800
++++ instrumented/DiskJoin/lib/DiskJoin.h	2026-11-03 17:29:55.081743737 +0800
+@@ -17,6 +17,14 @@
+ 
+ struct DiskJoin {
+     void build(ConfigReader config) {
++        // [GATE14] experiment control: the build phase is NOT deterministic
++        // across thread counts (its graph.addPoint runs under `#pragma omp
++        // parallel for`, so concurrent HNSW insertion changes the graph for
++        // OMP_NUM_THREADS > 1). To isolate the compute-loop thread scaling this
++        // gate lets a run REUSE a single fixed, verified graph/task set
++        // (cluster_file/metadata_file/hnsw_file from config) instead of
++        // rebuilding it. Unset -> build runs exactly as before.
++        if (getenv("GATE14_SKIP_BUILD")) return;
+         one_level_kmeans(config);
+     }
+ 

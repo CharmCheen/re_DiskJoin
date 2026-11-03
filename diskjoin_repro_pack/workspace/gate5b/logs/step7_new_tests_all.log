@@ -1,0 +1,30 @@
+# Gate 5B (new round) ALL new-round deterministic tests
+# date: 2026-11-03T12:53:49+08:00
+
+=== deliverable 2: streaming pair verifier (tests/test_stream_verifier.py) ===
+test_bad_line_detected (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_clean_sorted_counts_and_digest (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_duplicate_unsorted_exact_via_external_sort (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_duplicate_unsorted_marked_unverified_without_exact_scan (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_endpoint_predictions_match_evaluate (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_order_change_ordered_vs_unordered_compare (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_reversed_and_out_of_range_detected (tests.test_stream_verifier.StreamVerifierTests) ... ok
+test_self_join_detected (tests.test_stream_verifier.StreamVerifierTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.550s
+
+OK
+rc=0
+
+=== deliverable 1: bvecs->fbin converter (tests/test_bvecs_convert.py) ===
+test_check_rejects_bad_header (tests.test_bvecs_convert.ConvertTests) ... ok
+test_check_rejects_wrong_expected_n (tests.test_bvecs_convert.ConvertTests) ... ok
+test_cli_writes_json (tests.test_bvecs_convert.ConvertTests) ... ok
+test_roundtrip_exact (tests.test_bvecs_convert.ConvertTests) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.069s
+
+OK
+rc=0

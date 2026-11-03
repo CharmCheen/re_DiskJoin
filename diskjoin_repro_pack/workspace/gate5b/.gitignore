@@ -21,6 +21,12 @@ runs/step11_hotspot_profile/graph/
 *.gzprefix
 pairs.txt
 
-# Build directories (compiled binaries)
+# Step 13-15 per-thread streaming sink raw outputs and external-sort artifacts
+pairs.txt.t*
+pairs.concat
+*.sorted
+
+# Build directories (compiled binaries), incl. ASan/UBSan builds
 build/
 build_*/
+*_build/

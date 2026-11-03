@@ -1,0 +1,20 @@
+# Gate 5B Step 3: manifest-driven evaluator reproduces 100K metrics
+# date: 2026-11-03T12:41:44+08:00
+
+rc=0
+
+=== comparison with frozen Gate 5A-R evaluation.json ===
+design n: 100000 == 100000
+empty_gt_endpoints: 68 == 68
+sampled_false_positives: 0 == 0
+total_output_pairs: 3855811 == 3855811
+neighbor_weighted_recall: new=0.8172816794719187 frozen=0.8172816794719187 equal=True
+nonempty_endpoint_mean_recall: new=0.6675276752768653 frozen=0.6675276752768653 equal=True
+precision: new=1.0 frozen=1.0 equal=True
+
+=== gate5b 100K metrics (manifest-driven, full-neighborhood GT, 200 eval endpoints) ===
+threshold_squared: 73984
+bootstrap: whole endpoint, including empty GT endpoints 5000 seed 2026110303
+  neighbor_weighted_recall: 0.8172816794719187 CI=[0.7634864114559338, 0.868265631409199] valid=5000 undef=0 degenerate=False
+  nonempty_endpoint_mean_recall: 0.6675276752768653 CI=[0.6087999205279293, 0.7229044138718212] valid=5000 undef=0 degenerate=False
+  precision: 1.0 CI=[1.0, 1.0] valid=5000 undef=0 degenerate=True

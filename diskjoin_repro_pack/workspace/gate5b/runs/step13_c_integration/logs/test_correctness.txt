@@ -1,0 +1,15 @@
+test_frozen_oracle_header_offset_reproducer (tests.test_correctness.OracleTests) ... ok
+test_last_four_dimensions_calib_and_gt (tests.test_correctness.OracleTests) ... ok
+test_random_cross_implementation (tests.test_correctness.OracleTests) ... ok
+test_reject_bad_inputs_and_overwrite (tests.test_correctness.OracleTests) ... ok
+test_disjoint_reproducible_split (tests.test_correctness.StatisticsTests) ... ok
+test_pair_validation_includes_empty_gt_fp (tests.test_correctness.StatisticsTests) ... ok
+test_sampler_and_evaluator_cli_diagnostic_is_separate (tests.test_correctness.StatisticsTests) ... ok
+test_staged_server_validator_rejects_bad_invariant_and_rss (tests.test_correctness.StatisticsTests) ... ok
+test_undefined_and_degenerate_intervals (tests.test_correctness.StatisticsTests) ... ok
+test_weighted_mean_precision_and_empty_endpoint (tests.test_correctness.StatisticsTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.445s
+
+OK

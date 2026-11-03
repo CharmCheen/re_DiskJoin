@@ -1,0 +1,37 @@
+=== step14 100K correctness START 2026-11-03T17:34:04+08:00 ===
+=== [100K t=1 cpus=2] START 2026-11-03T17:34:04+08:00 ===
+=== [100K t=1] END 2026-11-03T17:34:10+08:00 rc=0 ===
+=== [100K t=2 cpus=2,3] START 2026-11-03T17:34:10+08:00 ===
+=== [100K t=2] END 2026-11-03T17:34:13+08:00 rc=0 ===
+=== [100K t=4 cpus=2,3,4,5] START 2026-11-03T17:34:13+08:00 ===
+=== [100K t=4] END 2026-11-03T17:34:16+08:00 rc=0 ===
+--- per-run threads + counts ---
+[t=1] rc=0
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t1/pairs.txt pairs=3855811 threads=1
+[t=2] rc=0
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t2/pairs.txt pairs=3855811 threads=2
+[t=4] rc=0
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t4/pairs.txt pairs=3855811 threads=4
+--- sort pairs (exact multiset) + sha256 ---
+e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t1/pairs.sorted
+e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t2/pairs.sorted
+e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t4/pairs.sorted
+e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/ref_pairs.sorted
+--- exact multiset comparison (cmp on sorted files) ---
+t1 vs t2: IDENTICAL
+t1 vs t4: IDENTICAL
+t1 vs ref: IDENTICAL
+t1 vs ref: IDENTICAL
+t2 vs ref: IDENTICAL
+t4 vs ref: IDENTICAL
+--- task hash across threads ---
+4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t1/tasks.txt
+4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t2/tasks.txt
+4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step14_cpu_scaling/correctness_100k/t4/tasks.txt
+=== step14 100K correctness END 2026-11-03T17:34:22+08:00 ===

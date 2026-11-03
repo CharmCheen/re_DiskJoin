@@ -1,0 +1,16 @@
+{
+  "n": 100000,
+  "d": 128,
+  "conversion": "all coordinates equal",
+  "independent_endpoints": [
+    0,
+    1786,
+    2878,
+    3008
+  ],
+  "threshold": 73984,
+  "sha256": {
+    "../gate5a/data/bigann100k.bvecs": "cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3",
+    "../gate5a/data/bigann100k.fbin": "d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1"
+  }
+}

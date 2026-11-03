@@ -1,0 +1,24 @@
+{
+  "name": "bigann100k",
+  "n": 100000,
+  "dimension": 128,
+  "fbin": {
+    "path": "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.fbin",
+    "bytes": 51200008,
+    "header_n": 100000,
+    "header_d": 128,
+    "sha256": "d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1"
+  },
+  "record_layout": {
+    "fbin": "uint32 n, uint32 d, then n*d float32 (little-endian)",
+    "bvecs": "per record: uint32 dimension prefix, then dimension uint8"
+  },
+  "provenance": "Gate5A 100K subset of BigANN (base.1B); bvecs<->fbin conversion cross-checked by oracle/independent_check.py",
+  "bvecs": {
+    "path": "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.bvecs",
+    "bytes": 13200000,
+    "header_d": 128,
+    "records_checked": 100000,
+    "sha256": "cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3"
+  }
+}

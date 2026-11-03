@@ -1,0 +1,11 @@
+make: Entering directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+make[1]: Entering directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+make[2]: Entering directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+make[2]: Leaving directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+make[2]: Entering directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+[ 50%] Building CXX object CMakeFiles/main.dir/expr/main.cpp.o
+[100%] Linking CXX executable main
+make[2]: Leaving directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+[100%] Built target main
+make[1]: Leaving directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'
+make: Leaving directory '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build'

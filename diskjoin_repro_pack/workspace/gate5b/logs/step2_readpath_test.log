@@ -1,0 +1,77 @@
+# Gate 5B Step 2: ClusterIO read-path deterministic regression test
+# date: 2026-11-03T12:34:37+08:00  host: amax
+# patched header sha256: 66c4f4dc903258ae86f85933befca5d002407d9f2f68477d7c906836ea2baac4
+
+=== compile (patched header; -mavx2 -mfma -march=native like CMake) ===
+instrumented/DiskJoin/lib/../utils/dist_func.h: In function ‘float utils::InnerProductFloatAVX512(const void*, const void*, const void*)’:
+instrumented/DiskJoin/lib/../utils/dist_func.h: In function ‘float utils::InnerProductFloatAVX512Dim20(const void*, const void*, const void*)’:
+instrumented/DiskJoin/lib/../utils/dist_func.h: In function ‘float utils::InnerProductFloatAVX512Hp(const void*, const void*, const void*)’:
+instrumented/DiskJoin/lib/ClusterIO.h: In constructor ‘ClusterWriter::ClusterWriter(std::string, std::string, std::string)’:
+instrumented/DiskJoin/lib/ClusterIO.h: In constructor ‘ClusterReader::ClusterReader(std::string, std::string, size_t)’:
+instrumented/DiskJoin/lib/../utils/dist_func.h: At global scope:
+compile rc=0
+
+=== run T1..T6 (workdir on ext4) ===
+ok  : T1 normal O_DIRECT read returns exact bucket values
+ok  : T2 truncated cluster read throws instead of returning stale data
+ok  : T3 read failure (EBADF) throws
+ok  : T4 EINTR-interrupted read is retried to completion
+ok  : T5 constructor throws on missing cluster/metadata files
+ok  : T6 truncated metadata throws
+
+READ-PATH TESTS PASSED (0 failures)
+run rc=0
+
+=== negative control build: pre-fix tree ===
+pre-fix header sha256: 6647f18344250bb18d02e8e2796a467177976794aca0192e784f0a52e25caaac
+compile(pre-fix) rc=0
+--- run negative control vs PRE-FIX header (expect rc=0, bugs reproduced) ---
+double free or corruption (top)
+/bin/bash: line 30: 286952 Aborted                 (core dumped) ./build/test_clusterio_read_negative_prefix build/neg_tmp
+run rc=134
+
+=== negative control vs PATCHED header (expect rc!=0, bugs gone) ===
+compile(patched) rc=0
+FAIL: N1 (bug) truncated read returns stale bytes without throwing
+FAIL: N2 (bug) constructor does not fail on missing files
+FAIL: N3 (bug) truncated metadata does not throw
+
+NEG-CONTROL SAW FIXED BEHAVIOUR (3 failures)
+run rc=1
+
+=== CONCLUSION ===
+Positive read-path tests PASS on patched header; the same tests' bug assertions
+FAIL on the pre-fix header => the regression test detects the defect the patch fixes.
+
+=== pre-fix negative-control crash backtrace (gdb) ===
+# pre-fix constructor never initialises 'buffer'; destructor free()s it. N2 constructs
+# a reader on missing files (pre-fix: no throw), then the destructor free()s garbage.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+double free or corruption (top)
+
+Program received signal SIGABRT, Aborted.
+__pthread_kill_implementation (no_tid=0, signo=6, threadid=140737352697664) at ./nptl/pthread_kill.c:44
+44	./nptl/pthread_kill.c: No such file or directory.
+#0  __pthread_kill_implementation (no_tid=0, signo=6, threadid=140737352697664) at ./nptl/pthread_kill.c:44
+#1  __pthread_kill_internal (signo=6, threadid=140737352697664) at ./nptl/pthread_kill.c:78
+#2  __GI___pthread_kill (threadid=140737352697664, signo=signo@entry=6) at ./nptl/pthread_kill.c:89
+#3  0x00007ffff7842476 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26
+#4  0x00007ffff78287f3 in __GI_abort () at ./stdlib/abort.c:79
+#5  0x00007ffff7889677 in __libc_message (action=action@entry=do_abort, fmt=fmt@entry=0x7ffff79dbb77 "%s\n") at ../sysdeps/posix/libc_fatal.c:156
+#6  0x00007ffff78a0cfc in malloc_printerr (str=str@entry=0x7ffff79de770 "double free or corruption (top)") at ./malloc/malloc.c:5666
+#7  0x00007ffff78a2e4c in _int_free (av=0x7ffff7a1ac80 <main_arena>, p=0x555555587ff0, have_lock=<optimized out>) at ./malloc/malloc.c:4583
+#8  0x00007ffff78a5453 in __GI___libc_free (mem=<optimized out>) at ./malloc/malloc.c:3391
+#9  0x00005555555580a0 in ClusterReader::~ClusterReader() ()
+#10 0x0000555555557036 in main ()
+A debugging session is active.
+
+	Inferior 1 [process 287064] will be killed.
+
+Quit anyway? (y or n) [answered Y; input not from terminal]
+
+===== STEP 2b: ClusterIO read-path test conclusion =====
+Positive tests T1..T6 PASS on patched header (rc=0).
+Negative control: on pre-fix header the bug assertions reproduce; it aborts in
+~ClusterReader() -> free() on the uninitialised 'buffer' member (gdb bt captured),
+then on the patched header it reports 3 FAILs (bugs gone) => the patch is what fixes it.

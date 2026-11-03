@@ -1,0 +1,4 @@
+boundary : got=73984 (47908000) ref=73984 (47908000)  strict<73984 got=0 ref=0
+just-below: got=73983.9531            strict<73984 got=1
+empty block n=0: ok, out untouched=123.0
+checks=8067 fails=0 => PASS

@@ -1,0 +1,596 @@
+#pragma once
+
+#include <algorithm>
+#include <thread>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <chrono>
+#include <ctime>
+#include <memory>        // [GATE15] per-thread streaming sink
+#include <string>        // [GATE15] per-thread streaming sink
+#include <omp.h>
+#include "Kmeans.h"
+#include "ClusterIO.h"
+#include "Gorder.h"
+#include "Cache.h"
+#include "ConfigReader.h"
+#include "gate13_l2.h"   // [GATE13] fixed-128 blocked compute path
+
+struct DiskJoin {
+    void build(ConfigReader config) {
+        // [GATE14] experiment control: the build phase is NOT deterministic
+        // across thread counts (its graph.addPoint runs under `#pragma omp
+        // parallel for`, so concurrent HNSW insertion changes the graph for
+        // OMP_NUM_THREADS > 1). To isolate the compute-loop thread scaling this
+        // gate lets a run REUSE a single fixed, verified graph/task set
+        // (cluster_file/metadata_file/hnsw_file from config) instead of
+        // rebuilding it. Unset -> build runs exactly as before.
+        if (getenv("GATE14_SKIP_BUILD")) return;
+        one_level_kmeans(config);
+    }
+
+    void search(ConfigReader config) {
+        // [GATE5B-STEP11] env-gated coarse phase profiler (wall + process CPU).
+        // Coarse boundaries only: one timer pair per phase, per cluster
+        // (preload vs compute) and per cache-access type; NEVER per distance
+        // call. The sub-slots FIND/READ/PUSH nest inside PRELOAD, so they must
+        // NOT be added to PRELOAD again. SEARCH_TOTAL encloses everything and
+        // is reported separately. Purely additive: unset -> reference
+        // behaviour is byte-identical (no logic, ordering or counter change).
+        const bool gp = getenv("GATE5B_PROFILE") != nullptr;
+        enum { P_META, P_GRAPH, P_TASKPREP, P_SETUP, P_GORDER, P_JJOIN,
+               P_PRELOAD, P_FIND, P_READ, P_PUSH, P_COMPUTE, P_RESULT, P_N };
+        static const char* const gp_names[P_N] = {
+            "meta", "graph", "taskprep", "setup", "gorder", "join_setup",
+            "preload", "find", "read", "push", "compute", "result" };
+        double pw[P_N] = {0}, pc[P_N] = {0};
+        auto gnow = []() { return std::chrono::steady_clock::now(); };
+        auto gcpu = []() { return (double)clock() / (double)CLOCKS_PER_SEC; };
+        auto gacc = [&](std::chrono::steady_clock::time_point w0, double c0, int s) {
+            pw[s] += std::chrono::duration<double>(gnow() - w0).count();
+            pc[s] += gcpu() - c0;
+        };
+        auto g_search_w0 = gnow(); double g_search_c0 = gcpu();
+        float epsilon = sqrt(config.radius);
+        ClusterReader cluster_reader(config.cluster_file, config.metadata_file, config.K);
+        auto g_w0 = gnow(); double g_c0 = gcpu();
+        cluster_reader.readMetaData();
+        gacc(g_w0, g_c0, P_META);
+        size_t max_comp = cluster_reader.n / cluster_reader.cluster_num * config.K;
+        size_t cluster_num = cluster_reader.cluster_num;
+        size_t empty_count = 0;
+        size_t d = cluster_reader.d;
+        auto g_w1 = gnow(); double g_c1 = gcpu();
+        hnswlib::L2Space space(d);
+        hnswlib::HierarchicalNSW<float>* graph = new hnswlib::HierarchicalNSW<float>(&space, config.hnsw_file);
+        graph->radii = cluster_reader.radii;
+        auto& bucket_sizes = cluster_reader.bucket_sizes;
+        auto& assignment = cluster_reader.assignment;
+        float* centroids = cluster_reader.centroids.data();
+        std::vector<std::vector<size_t>> tasks(cluster_num);
+        graph->setEf(1000);
+        gacc(g_w1, g_c1, P_GRAPH);
+        int len = 500;
+        std::vector<float> arcos_list(len + 1);
+        float sc = len / 2;
+        for(int i = 0; i <= len; i++){
+            float x = float(i - sc) / sc;
+            float y = std::acos(x);
+            arcos_list[i] = y;
+        }
+
+        auto arcos = [&](float x) -> float {
+            if (x > 1) x = 1;
+            int index = x*len/2 + len/2;
+            return arcos_list[index];
+        };
+        auto g_w2 = gnow(); double g_c2 = gcpu();
+#pragma omp parallel for
+        for (size_t i = 0; i < cluster_num; i++) {
+            auto top_candidates = graph->knnSearchBaseLayer(i, config.K);
+            std::vector<std::pair<float, unsigned>> dis_to_boundary;
+            while (!top_candidates.empty()) {
+                auto neighbor_cluster = top_candidates.top().second;
+                float temp = top_candidates.top().first / 2;
+                top_candidates.pop();
+                dis_to_boundary.emplace_back(temp, neighbor_cluster);
+            }
+            // [GATE4A] env-gated raw candidate dump (post-knn, pre-pruning).
+            if (getenv("GATE4A_KNN_OUT")) {
+                #pragma omp critical
+                {
+                    std::ofstream g4a_knn(getenv("GATE4A_KNN_OUT"), std::ios::app);
+                    g4a_knn << i << " " << dis_to_boundary.size();
+                    for (auto& c : dis_to_boundary) g4a_knn << " " << c.first << " " << c.second;
+                    g4a_knn << "\n";
+                }
+            }
+            std::sort(dis_to_boundary.begin(), dis_to_boundary.end());
+            int ptr = dis_to_boundary.size() - 1;
+            float sum_of_angle = 0;
+            while (ptr >= 0) {
+                sum_of_angle += arcos(dis_to_boundary[ptr].first / epsilon);
+                if (sum_of_angle >= config.error_bound) break;
+                ptr--;
+            }
+            for (int ii = 0; ii <= ptr; ii++) {
+                if (i <= dis_to_boundary[ii].second) {
+                    tasks[i].push_back(dis_to_boundary[ii].second);
+                }
+            }
+            std::sort(tasks[i].begin(), tasks[i].end());
+            if (tasks[i].size() == 0) {
+                for (int ii = 0; ii <= ptr; ii++) {
+                    if (dis_to_boundary[ii].first != 0) 
+                        exit(0);
+                }
+                tasks[i].push_back(i);
+            }
+        }
+        delete graph;
+        gacc(g_w2, g_c2, P_TASKPREP);
+        size_t task_num = 0, max_task_num = 0;
+        for (size_t i = 0; i < cluster_num; i++) {
+            task_num += tasks[i].size();
+            if (tasks[i].size() > max_task_num) max_task_num = tasks[i].size();
+        }
+        auto g_w3 = gnow(); double g_c3 = gcpu();
+        std::vector<size_t> perm(cluster_num);
+        std::vector<size_t> order(cluster_num);
+        std::vector<std::vector<size_t>> reordered_tasks(cluster_num);
+        std::vector<std::vector<size_t>> shuffled_tasks(cluster_num);
+        for (size_t i = 0; i < cluster_num; i++) {
+            perm[i] = i;
+        }
+        for (size_t i = 0; i < cluster_num; i++) {
+            shuffled_tasks[i] = tasks[perm[i]];
+        }
+        size_t budget = (size_t)(config.mem_budget * 1024 * 1024 * 1024);
+        size_t length = cluster_reader.max_points * d;
+        gacc(g_w3, g_c3, P_SETUP);
+        // [GATE4B0] env-gated Gorder window override. The window normally
+        // derives from mem_budget (budget/4/length/K*2) - the SAME knob that
+        // sets the Cache capacity (budget/4/length) and the build-time
+        // ClusterWriter buffer. This override lets an experiment change the
+        // window alone without touching mem_budget, so cache conditions stay
+        // fixed. Unset -> original expression, reference behaviour unchanged.
+        size_t g4b0_window = budget / 4 / length / config.K * 2;
+        const char* g4b0_window_env = getenv("GATE4B0_WINDOW");
+        if (g4b0_window_env) g4b0_window = strtoull(g4b0_window_env, nullptr, 10);
+        auto g_w4 = gnow(); double g_c4 = gcpu();
+        perm = order_gorder(shuffled_tasks, g4b0_window);
+        gacc(g_w4, g_c4, P_GORDER);
+        auto g_w5 = gnow(); double g_c5 = gcpu();
+        // [GATE4B0] env-gated task-order override applied AFTER Gorder: perm
+        // maps bucket -> slot, so overriding perm only changes which slot a
+        // bucket is processed in (and hence the cache access sequence).
+        // Bucket labels, task lists, the upper-triangle filter and the join
+        // itself are untouched; the task multiset and the output pair set
+        // are invariant by construction.
+        //   GATE4B0_ORDER=identity -> slot i processes bucket i
+        //   GATE4B0_ORDER=file     -> perm read from GATE4B0_PERM_FILE
+        //   unset                  -> Gorder result (reference behaviour)
+        const char* g4b0_order = getenv("GATE4B0_ORDER");
+        if (g4b0_order && strcmp(g4b0_order, "identity") == 0) {
+            for (size_t i = 0; i < cluster_num; i++) perm[i] = i;
+        } else if (g4b0_order && strcmp(g4b0_order, "file") == 0) {
+            const char* g4b0_perm_file = getenv("GATE4B0_PERM_FILE");
+            if (!g4b0_perm_file) {
+                std::cerr << "[gate4b0] GATE4B0_ORDER=file requires GATE4B0_PERM_FILE\n";
+                exit(1);
+            }
+            std::ifstream g4b0_perm_in(g4b0_perm_file);
+            if (!g4b0_perm_in) {
+                std::cerr << "[gate4b0] cannot open GATE4B0_PERM_FILE=" << g4b0_perm_file << "\n";
+                exit(1);
+            }
+            std::vector<char> g4b0_seen(cluster_num, 0);
+            for (size_t i = 0; i < cluster_num; i++) {
+                if (!(g4b0_perm_in >> perm[i]) || perm[i] >= cluster_num || g4b0_seen[perm[i]]) {
+                    std::cerr << "[gate4b0] GATE4B0_PERM_FILE invalid at entry " << i << "\n";
+                    exit(1);
+                }
+                g4b0_seen[perm[i]] = 1;
+            }
+        } else if (g4b0_order) {
+            std::cerr << "[gate4b0] unknown GATE4B0_ORDER=" << g4b0_order
+                      << " (expected identity|file)\n";
+            exit(1);
+        }
+        if (g4b0_order || g4b0_window_env) {
+            std::cerr << "[gate4b0] order=" << (g4b0_order ? g4b0_order : "default")
+                      << " window=" << g4b0_window
+                      << " window_default=" << (budget / 4 / length / config.K * 2) << "\n";
+        }
+        for (size_t i = 0; i < cluster_num; i++) {
+            reordered_tasks[perm[i]] = shuffled_tasks[i];
+            order[perm[i]] = i;
+        }
+        // [GATE4A] env-gated configuration decomposition: shows how ONE
+        // mem_budget value simultaneously determines (a) the ClusterWriter
+        // per-bucket write buffer used at build time, (b) this Cache capacity,
+        // and (c) the Gorder window passed above. Print-only.
+        if (getenv("GATE4A_STATS")) {
+            size_t capacity = budget / 4 / length;
+            size_t window = budget / 4 / length / config.K * 2;
+            size_t writer_buffer = div_round_up(budget / cluster_num, d * 4) * d * 4;
+            std::cerr << "[gate4a-config] n=" << (size_t)cluster_reader.n
+                      << " d=" << d
+                      << " cluster_num=" << cluster_num
+                      << " max_points=" << cluster_reader.max_points
+                      << " budget_bytes=" << budget
+                      << " length=" << length
+                      << " capacity_slots=" << capacity
+                      << " K=" << config.K
+                      << " window=" << window
+                      << " window_lt_cluster_num=" << (window < cluster_num ? 1 : 0)
+                      << " capacity_lt_cluster_num=" << (0 < capacity && capacity < cluster_num ? 1 : 0)
+                      << " writer_buffer_bytes=" << writer_buffer
+                      << " writer_buffer_vectors=" << (writer_buffer / (d * 4))
+                      << " error_bound=" << config.error_bound
+                      << " radius=" << config.radius
+                      << " task_num_total=" << task_num
+                      << " max_task_num=" << max_task_num
+                      << "\n";
+        }
+        // [GATE4A] env-gated task-graph dump: line i is
+        // "<slot> <target_bucket> <deg> <neighbour buckets...>" after the
+        // Gorder reorder. The identity-order graph is recoverable because
+        // the lists themselves are unmodified, only their placement permuted.
+        if (getenv("GATE4A_TASK_OUT")) {
+            std::ofstream g4a_tasks(getenv("GATE4A_TASK_OUT"));
+            for (size_t i = 0; i < cluster_num; i++) {
+                g4a_tasks << i << " " << order[i] << " " << reordered_tasks[i].size();
+                for (auto nc : reordered_tasks[i]) g4a_tasks << " " << nc;
+                g4a_tasks << "\n";
+            }
+        }
+        // [GATE3] runtime invariant checks, gated, no effect on join logic.
+        if (getenv("GATE3_INVARIANTS")) {
+            std::vector<size_t> seen(cluster_num, 0);
+            size_t perm_ok = 1, viol_head = 0, empty_tasks = 0, self_missing = 0;
+            for (size_t i = 0; i < cluster_num; i++) {
+                if (order[i] >= cluster_num || seen[order[i]]) { perm_ok = 0; }
+                else seen[order[i]] = 1;
+            }
+            for (size_t i = 0; i < cluster_num; i++) {
+                if (reordered_tasks[i].empty()) { empty_tasks++; continue; }
+                if (reordered_tasks[i][0] != order[i]) viol_head++;
+                bool has_self = false;
+                for (auto nc : reordered_tasks[i]) if (nc == order[i]) has_self = true;
+                if (!has_self) self_missing++;
+            }
+            size_t task_total = 0, upper_ok = 1;
+            for (size_t i = 0; i < cluster_num; i++) {
+                task_total += reordered_tasks[i].size();
+                for (auto nc : reordered_tasks[i]) if (nc < order[i]) upper_ok = 0;
+            }
+            size_t sum_bucket = 0;
+            for (auto s : bucket_sizes) sum_bucket += s;
+            std::cerr << "[gate3-inv] perm_ok=" << perm_ok
+                      << " empty_tasks=" << empty_tasks
+                      << " head_mismatch=" << viol_head
+                      << " self_missing=" << self_missing
+                      << " upper_triangle_ok=" << upper_ok
+                      << " task_total=" << task_total
+                      << " bucket_sum=" << sum_bucket
+                      << " n=" << (size_t)cluster_reader.n << "\n";
+        }
+        std::vector<float> data(max_task_num * length);
+
+        float io_size = 0;
+
+        Cache cache(budget, length);
+        cache.init(reordered_tasks);
+        gacc(g_w5, g_c5, P_JJOIN);
+        float sum = 0;
+        size_t count = 0;
+        float disk_time = 0;
+        float comp_time = 0;
+        float dist_comp = 0;
+        // [GATE14] exact integer distance-call counter (diagnostic only).
+        // `dist_comp` above is a float and therefore SATURATES for large
+        // per-cluster regions (> 2^24 ~ 1.7e7 evaluations in one parallel
+        // region), so its reported value is thread-partition dependent in the
+        // original code. This exact size_t counter, incremented at exactly the
+        // same sites, is printed (gated) to prove the true evaluation count is
+        // invariant across thread counts. It changes no join logic.
+        size_t g14_dist_exact = 0;
+        // [GATE3] env-gated pair-output instrumentation. It records the same
+        // hit condition used by the reference and does not alter candidate
+        // generation, ordering, cache behaviour, pruning or distance logic.
+        const char* gate3_pair_out = getenv("GATE3_PAIR_OUT");
+        // [GATE5B-STEP10] GATE3_COUNT_ONLY: tally the emitted pairs without
+        // buffering or writing them (emits remain gated on GATE3_PAIR_OUT).
+        // Candidate generation, task ordering, cache behaviour, pruning and
+        // distance logic are untouched; only the output sink is replaced by a
+        // counter. Requires GATE3_PAIR_OUT to be set.
+        const bool gate3_count_only = gate3_pair_out && getenv("GATE3_COUNT_ONLY");
+        // [GATE13] env-gated fixed-128 blocked compute path. When GATE13_C_PATH
+        // is set AND the runtime dimension is exactly 128, the two point-point
+        // loops below compute a small block of candidate distances with vec1
+        // held in registers (lib/gate13_l2.h) and then apply the ORIGINAL
+        // judgment per result. Candidates, the upper-triangle filter, the
+        // threshold, task order, output order and float accumulation are
+        // unchanged; unset (or d != 128) -> byte-identical original loop.
+        const bool gate13_c = (getenv("GATE13_C_PATH") != nullptr) && (d == 128);
+        // [GATE5B-1M] optional STREAMING pair dump. The default path buffers all
+        // pairs in RAM before writing (fine at 100K, ~6 GB at 1M). When
+        // GATE3_PAIR_STREAM=1 and OMP_NUM_THREADS=1, pairs are written in the
+        // same encounter order straight to the file, so the output bytes are
+        // identical to the buffered path while RAM stays bounded. It changes no
+        // join logic (candidate generation, ordering, pruning, distance).
+        const bool gate3_stream = gate3_pair_out && getenv("GATE3_PAIR_STREAM") && !gate3_count_only;
+        if (gate3_stream && omp_get_max_threads() != 1) {
+            std::cerr << "[gate3] GATE3_PAIR_STREAM requires OMP_NUM_THREADS=1\n";
+            exit(1);
+        }
+        std::ofstream gate3_stream_f;
+        std::vector<char> gate3_iobuf;
+        if (gate3_stream) {
+            gate3_iobuf.resize(1u << 22); // 4 MiB stream buffer
+            gate3_stream_f.rdbuf()->pubsetbuf(gate3_iobuf.data(),
+                                              std::streamsize(gate3_iobuf.size()));
+            gate3_stream_f.open(gate3_pair_out, std::ios::binary);
+            if (!gate3_stream_f) {
+                std::cerr << "[gate3] cannot open GATE3_PAIR_OUT=" << gate3_pair_out << "\n";
+                exit(1);
+            }
+        }
+        // [GATE15] per-thread streaming pair sink. The default sink buffers all
+        // pairs in RAM (~6.4 GB for the 1M join), which exceeds the 2 GiB RSS
+        // budget. With GATE15_PER_THREAD_STREAM=1 each compute thread streams
+        // its own pairs to GATE3_PAIR_OUT.t<tid> through a small per-thread
+        // buffer, so RSS stays bounded regardless of output size. Output-only:
+        // candidate generation, task/cache ordering, pruning, threshold and
+        // distance logic are byte-for-byte unchanged. Concatenating the
+        // per-thread files yields the same pair multiset as the buffered sink
+        // (only the output ORDER differs).
+        const bool gate15_per_thread = gate3_pair_out && getenv("GATE15_PER_THREAD_STREAM") && !gate3_count_only && !gate3_stream;
+        std::vector<std::unique_ptr<std::ofstream>> gate15_fs;
+        std::vector<std::vector<char>> gate15_iobufs;
+        std::vector<size_t> gate15_thread_total;
+        if (gate15_per_thread) {
+            const int gate15_nt = omp_get_max_threads();
+            gate15_fs.resize(gate15_nt);
+            gate15_iobufs.resize(gate15_nt);
+            gate15_thread_total.assign(gate15_nt, 0);
+            for (int gate15_t = 0; gate15_t < gate15_nt; gate15_t++) {
+                gate15_iobufs[gate15_t].resize(1u << 22); // 4 MiB per thread
+                gate15_fs[gate15_t].reset(new std::ofstream());
+                gate15_fs[gate15_t]->rdbuf()->pubsetbuf(
+                    gate15_iobufs[gate15_t].data(),
+                    std::streamsize(gate15_iobufs[gate15_t].size()));
+                std::string gate15_path = std::string(gate3_pair_out) + ".t" +
+                                          std::to_string(gate15_t);
+                gate15_fs[gate15_t]->open(gate15_path, std::ios::binary);
+                if (!*gate15_fs[gate15_t]) {
+                    std::cerr << "[gate15] cannot open " << gate15_path << "\n";
+                    exit(1);
+                }
+            }
+        }
+        std::vector<std::vector<std::pair<size_t, size_t>>> gate3_pair_bufs;
+        if (gate3_pair_out && !gate3_stream && !gate3_count_only)
+            gate3_pair_bufs.resize(omp_get_max_threads());
+        std::vector<size_t> gate3_count_bufs;
+        if (gate3_count_only) gate3_count_bufs.assign(omp_get_max_threads(), 0);
+        size_t gate3_stream_total = 0;
+        auto gate3_emit = [&](size_t a, size_t b) {
+            if (gate3_count_only) {
+                gate3_count_bufs[omp_get_thread_num()]++;
+            } else if (gate3_stream) {
+                gate3_stream_f << a << ' ' << b << '\n';
+                gate3_stream_total++;
+            } else if (gate15_per_thread) {
+                const int gate15_t = omp_get_thread_num();
+                (*gate15_fs[gate15_t]) << a << ' ' << b << '\n';
+                gate15_thread_total[gate15_t]++;
+            } else {
+                gate3_pair_bufs[omp_get_thread_num()].emplace_back(a, b);
+            }
+        };
+        for (size_t i = 0; i < cluster_num; i++) {
+            auto g_pl_w0 = gnow(); double g_pl_c0 = gcpu();
+            auto target_cluster = order[i];
+            auto& target_tasks = reordered_tasks[i];
+            for (size_t j = 0; j < target_tasks.size(); j++) {
+                auto neighbor_cluster = target_tasks[j];
+                auto g_f_w0 = gnow(); double g_f_c0 = gcpu();
+                bool g_found = cache.find(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d);
+                gacc(g_f_w0, g_f_c0, P_FIND);
+                if (!g_found) {
+                    auto g_r_w0 = gnow(); double g_r_c0 = gcpu();
+                    cluster_reader.posixDirectReadCluster(neighbor_cluster, data.data() + j * length);
+                    gacc(g_r_w0, g_r_c0, P_READ);
+                    auto g_p_w0 = gnow(); double g_p_c0 = gcpu();
+                    cache.push(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d);
+                    gacc(g_p_w0, g_p_c0, P_PUSH);
+                }
+            }
+            gacc(g_pl_w0, g_pl_c0, P_PRELOAD);
+            
+            if (bucket_sizes[target_cluster] == 0) continue;
+            auto g_cp_w0 = gnow(); double g_cp_c0 = gcpu();
+#pragma omp parallel for schedule(dynamic) reduction(+:sum) reduction(+:count) reduction(+:dist_comp) reduction(+:g14_dist_exact)
+            for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                auto id1 = assignment[target_cluster][j];
+                float* vec1 = data.data() + j * d;
+                if (gate13_c) {
+                    // [GATE13] blocked fixed-128 compute path. Candidates, the
+                    // upper-triangle filter, the strict `dist < epsilon*epsilon`
+                    // test, emit order and float accumulation are identical to
+                    // the original loop; only the point-point distances are
+                    // computed a block at a time with vec1 held in registers.
+                    {
+                        const size_t nbs = bucket_sizes[target_cluster];
+                        size_t l = 0;
+                        while (l < nbs) {
+                            const float* g_v2[GATE13_BLK]; size_t g_id[GATE13_BLK]; float g_d[GATE13_BLK];
+                            int gcnt = 0;
+                            while (l < nbs && gcnt < GATE13_BLK) {
+                                size_t id2 = assignment[target_cluster][l];
+                                if (id2 < id1) {
+                                    g_v2[gcnt] = data.data() + l * d;
+                                    g_id[gcnt] = id2;
+                                    gcnt++;
+                                }
+                                l++;
+                            }
+                            if (gcnt) gate13_l2sq_block128(vec1, g_v2, gcnt, g_d);
+                            for (int b = 0; b < gcnt; b++) {
+                                float dist = g_d[b];
+                                size_t id2 = g_id[b];
+                                dist_comp++; g14_dist_exact++;
+                                if (dist < epsilon * epsilon) {
+                                    if (id1 % 100000 == 0) count++;
+                                    if (id2 % 100000 == 0) count++;
+                                    if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
+                                }
+                            }
+                        }
+                    }
+                    for (int k = 1; k < target_tasks.size(); k++) {
+                        auto neighbor_cluster = target_tasks[k];
+                        // Point-to-centroid call kept exactly as in the original
+                        // loop (its result is unused there too).
+                        float dist = dist_l2(vec1, centroids + neighbor_cluster * d, &d);
+                        (void)dist;
+                        const size_t nbn = bucket_sizes[neighbor_cluster];
+                        size_t l = 0;
+                        while (l < nbn) {
+                            const float* g_v2[GATE13_BLK]; size_t g_id[GATE13_BLK]; float g_d[GATE13_BLK];
+                            int gcnt = 0;
+                            while (l < nbn && gcnt < GATE13_BLK) {
+                                g_v2[gcnt] = data.data() + k * length + l * d;
+                                g_id[gcnt] = assignment[neighbor_cluster][l];
+                                gcnt++; l++;
+                            }
+                            if (gcnt) gate13_l2sq_block128(vec1, g_v2, gcnt, g_d);
+                            for (int b = 0; b < gcnt; b++) {
+                                float dist1 = g_d[b];
+                                size_t id2 = g_id[b];
+                                dist_comp++; g14_dist_exact++;
+                                if (dist1 < epsilon * epsilon) {
+                                    if (id1 % 100000 == 0) count++;
+                                    if (id2 % 100000 == 0) count++;
+                                    if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                for (size_t l = 0; l < bucket_sizes[target_cluster]; l++) {
+                    auto id2 = assignment[target_cluster][l];
+                    if (id2 >= id1) continue;
+                    float* vec2 = data.data() + l * d;
+                    float dist = dist_l2(vec1, vec2, &d);
+                    dist_comp++; g14_dist_exact++;
+                    if (dist < epsilon * epsilon) {
+                        if (id1 % 100000 == 0) count++;
+                        if (id2 % 100000 == 0) count++;
+                        if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
+                    }
+                }
+
+                for (int k = 1; k < target_tasks.size(); k++) {
+                    auto neighbor_cluster = target_tasks[k];
+                    float dist = dist_l2(vec1, centroids + neighbor_cluster * d, &d);
+                    for (size_t l = 0; l < bucket_sizes[neighbor_cluster]; l++) {
+                        auto id2 = assignment[neighbor_cluster][l];
+                        float* vec2 = data.data() + k * length + l * d;
+                        float dist1 = dist_l2(vec1, vec2, &d);
+                        dist_comp++; g14_dist_exact++;
+                        if (dist1 < epsilon * epsilon) {
+                            if (id1 % 100000 == 0) count++;
+                            if (id2 % 100000 == 0) count++;
+                            if (gate3_pair_out) gate3_emit(std::min(id1, id2), std::max(id1, id2));
+                        };
+                    }
+                }
+                }
+            }
+            gacc(g_cp_w0, g_cp_c0, P_COMPUTE);
+        }
+        auto g_w6 = gnow(); double g_c6 = gcpu();
+        std::cout << "recall = " << 1.0 * count / config.gt << "\n";
+        cache.g4a_stats(); // [GATE4A] env-gated cache mechanism statistics
+        // [GATE4B1] env-gated I/O accounting: posixDirectReadCluster is the
+        // only bucket-read path and is called exactly once per cache miss, so
+        // read_calls must equal the miss count; effective_bytes = sum of
+        // bucket_size*d*4 over misses (useful payload); requested_aligned_
+        // bytes = sum of 4096-aligned read sizes actually passed to read(2)
+        // under O_DIRECT. Device-layer physical I/O is NOT measured here.
+        if (getenv("GATE4B1_IO_STATS")) {
+            fprintf(stderr, "[gate4b1-io] read_calls=%zu effective_bytes=%zu requested_aligned_bytes=%zu page_size=%zu\n",
+                    cluster_reader.reads, (size_t)cluster_reader.used, (size_t)cluster_reader.total, (size_t)PAGE_SIZE);
+        }
+        // [GATE3] precise statistics, gated.
+        if (getenv("GATE3_INVARIANTS")) {
+            std::cerr << "[gate3-stat] dist_comp=" << (size_t)dist_comp
+                      << " sampled_count=" << count
+                      << " gt=" << config.gt << "\n";
+        }
+        // [GATE14] exact integer distance-call count (diagnostic; see decl).
+        if (getenv("GATE14_EXACT_COUNT")) {
+            std::cerr << "[gate14-exact] dist_comp_exact=" << g14_dist_exact << "\n";
+        }
+        // [GATE3] write per-thread pair buffers (thread-local -> no locking).
+        // The streaming paths (GATE3_PAIR_STREAM, GATE15_PER_THREAD_STREAM)
+        // already wrote every pair during the join, so the buffered dump is
+        // skipped.
+        if (gate3_pair_out && !gate3_stream && !gate15_per_thread && !gate3_count_only) {
+            std::ofstream gate3_f(gate3_pair_out);
+            size_t gate3_total = 0;
+            for (auto& gate3_pb : gate3_pair_bufs) {
+                for (auto& gate3_pr : gate3_pb) {
+                    gate3_f << gate3_pr.first << " " << gate3_pr.second << "\n";
+                    gate3_total++;
+                }
+            }
+            gate3_f.close();
+            std::cerr << "[gate3] pair_dump=" << gate3_pair_out
+                      << " pairs=" << gate3_total
+                      << " threads=" << gate3_pair_bufs.size() << "\n";
+        }
+        if (gate3_stream) {
+            gate3_stream_f.flush();
+            std::streamsize sz = gate3_stream_f.tellp();
+            gate3_stream_f.close();
+            std::cerr << "[gate3] pair_dump=" << gate3_pair_out
+                      << " pairs=" << gate3_stream_total
+                      << " threads=1 streamed=1 bytes=" << (long long)sz << "\n";
+        }
+        if (gate15_per_thread) {
+            size_t gate15_total = 0;
+            for (int gate15_t = 0; gate15_t < (int)gate15_fs.size(); gate15_t++) {
+                gate15_fs[gate15_t]->flush();
+                gate15_fs[gate15_t]->close();
+                gate15_total += gate15_thread_total[gate15_t];
+            }
+            std::cerr << "[gate15] pair_dump=" << gate3_pair_out
+                      << " pairs=" << gate15_total
+                      << " threads=" << gate15_fs.size()
+                      << " per_thread_stream=1\n";
+        }
+        if (gate3_count_only) {
+            size_t gate3_count_total = 0;
+            for (size_t v : gate3_count_bufs) gate3_count_total += v;
+            std::cerr << "[gate3] count_only=1 pairs=" << gate3_count_total
+                      << " threads=" << gate3_count_bufs.size() << "\n";
+        }
+        gacc(g_w6, g_c6, P_RESULT);
+        // [GATE5B-STEP11] coarse phase profile (only when GATE5B_PROFILE set).
+        // FIND/READ/PUSH are sub-slots of PRELOAD; SEARCH_TOTAL encloses all
+        // slots. Wall vs process-CPU separates blocking O_DIRECT waits.
+        if (gp) {
+            double sw = std::chrono::duration<double>(gnow() - g_search_w0).count();
+            double sc = gcpu() - g_search_c0;
+            for (int s = 0; s < P_N; s++)
+                fprintf(stderr, "[gate5b-prof] %-10s wall_s=%.6f cpu_s=%.6f\n",
+                        gp_names[s], pw[s], pc[s]);
+            fprintf(stderr, "[gate5b-prof] SEARCH_TOTAL wall_s=%.6f cpu_s=%.6f\n", sw, sc);
+        }
+    }
+};

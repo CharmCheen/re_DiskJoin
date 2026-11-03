@@ -1,0 +1,19 @@
+=== step11 profile_10pct vs step10 10%-budget runs (per-budget invariant quantities) ===
+  dist_comp            step10=10701217792  step11=10701217792  MATCH
+  sampled_count        step10=7165  step11=7165  MATCH
+  pairs                step10=None  step11=398737742  **DIFF**
+  hit                  step10=7779  step11=7779  MATCH
+  miss                 step10=4670  step11=4670  MATCH
+  evict                step10=3210  step11=3210  MATCH
+  reject               step10=1421  step11=1421  MATCH
+  read_calls           step10=4670  step11=4670  MATCH
+  effective_read_bytes step10=2466615808  step11=2466615808  MATCH
+=== graph + task-order hashes (step7/step10 reference) ===
+  data.clusters  step11=8f688ef1edfdd262b48e1af82e1fb6bbb4172fbb81159fa834f93a862fe8e15a  ref=8f688ef1edfdd262b48e1af82e1fb6bbb4172fbb81159fa834f93a862fe8e15a  MATCH
+  data.metadata  step11=86827ea70cf5d6fa80fc4e014977b27615646a522889862b12e10d7fbc03db5a  ref=86827ea70cf5d6fa80fc4e014977b27615646a522889862b12e10d7fbc03db5a  MATCH
+  data.hnsw      step11=eb0be0ed7dd4be2a4413882350da7aebae71d906b2c72d1f080f753fba632c32  ref=eb0be0ed7dd4be2a4413882350da7aebae71d906b2c72d1f080f753fba632c32  MATCH
+  tasks.txt      step11=d699f7224491eb82d3935f5652857e8810e929305dc67b65d54c417cf39bfa3d  ref=d699f7224491eb82d3935f5652857e8810e929305dc67b65d54c417cf39bfa3d  MATCH
+=== config identity ===
+  step11 config sha256: 16cf475c4379d5f8b427995bd628d3fabf135cb792a402fc193c6af82d18c410
+  step10 r02_b010 config sha256: edbe037880b7db51c2481c84d1ee122b6340a06c40083e43a53dbe5fcc9830bb
+  diff: -cluster_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step10_cache_sensitivity/phase2/graph/data.clusters  -metadata_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step10_cache_sensitivity/phase2/graph/data.metadata  -hnsw_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step10_cache_sensitivity/phase2/graph/data.hnsw  +cluster_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.clusters  +metadata_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.metadata  +hnsw_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.hnsw  

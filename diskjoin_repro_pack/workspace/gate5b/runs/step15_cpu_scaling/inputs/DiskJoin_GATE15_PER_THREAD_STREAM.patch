@@ -1,0 +1,95 @@
+--- runs/step15_cpu_scaling/inputs/DiskJoin.h.before_step15	2026-11-03 18:05:33.500994709 +0800
++++ instrumented/DiskJoin/lib/DiskJoin.h	2026-11-03 18:06:04.750126679 +0800
+@@ -7,6 +7,8 @@
+ #include <fstream>
+ #include <chrono>
+ #include <ctime>
++#include <memory>        // [GATE15] per-thread streaming sink
++#include <string>        // [GATE15] per-thread streaming sink
+ #include <omp.h>
+ #include "Kmeans.h"
+ #include "ClusterIO.h"
+@@ -336,6 +338,39 @@
+                 exit(1);
+             }
+         }
++        // [GATE15] per-thread streaming pair sink. The default sink buffers all
++        // pairs in RAM (~6.4 GB for the 1M join), which exceeds the 2 GiB RSS
++        // budget. With GATE15_PER_THREAD_STREAM=1 each compute thread streams
++        // its own pairs to GATE3_PAIR_OUT.t<tid> through a small per-thread
++        // buffer, so RSS stays bounded regardless of output size. Output-only:
++        // candidate generation, task/cache ordering, pruning, threshold and
++        // distance logic are byte-for-byte unchanged. Concatenating the
++        // per-thread files yields the same pair multiset as the buffered sink
++        // (only the output ORDER differs).
++        const bool gate15_per_thread = gate3_pair_out && getenv("GATE15_PER_THREAD_STREAM") && !gate3_count_only && !gate3_stream;
++        std::vector<std::unique_ptr<std::ofstream>> gate15_fs;
++        std::vector<std::vector<char>> gate15_iobufs;
++        std::vector<size_t> gate15_thread_total;
++        if (gate15_per_thread) {
++            const int gate15_nt = omp_get_max_threads();
++            gate15_fs.resize(gate15_nt);
++            gate15_iobufs.resize(gate15_nt);
++            gate15_thread_total.assign(gate15_nt, 0);
++            for (int gate15_t = 0; gate15_t < gate15_nt; gate15_t++) {
++                gate15_iobufs[gate15_t].resize(1u << 22); // 4 MiB per thread
++                gate15_fs[gate15_t].reset(new std::ofstream());
++                gate15_fs[gate15_t]->rdbuf()->pubsetbuf(
++                    gate15_iobufs[gate15_t].data(),
++                    std::streamsize(gate15_iobufs[gate15_t].size()));
++                std::string gate15_path = std::string(gate3_pair_out) + ".t" +
++                                          std::to_string(gate15_t);
++                gate15_fs[gate15_t]->open(gate15_path, std::ios::binary);
++                if (!*gate15_fs[gate15_t]) {
++                    std::cerr << "[gate15] cannot open " << gate15_path << "\n";
++                    exit(1);
++                }
++            }
++        }
+         std::vector<std::vector<std::pair<size_t, size_t>>> gate3_pair_bufs;
+         if (gate3_pair_out && !gate3_stream && !gate3_count_only)
+             gate3_pair_bufs.resize(omp_get_max_threads());
+@@ -348,6 +383,10 @@
+             } else if (gate3_stream) {
+                 gate3_stream_f << a << ' ' << b << '\n';
+                 gate3_stream_total++;
++            } else if (gate15_per_thread) {
++                const int gate15_t = omp_get_thread_num();
++                (*gate15_fs[gate15_t]) << a << ' ' << b << '\n';
++                gate15_thread_total[gate15_t]++;
+             } else {
+                 gate3_pair_bufs[omp_get_thread_num()].emplace_back(a, b);
+             }
+@@ -498,9 +537,10 @@
+             std::cerr << "[gate14-exact] dist_comp_exact=" << g14_dist_exact << "\n";
+         }
+         // [GATE3] write per-thread pair buffers (thread-local -> no locking).
+-        // The streaming path (GATE3_PAIR_STREAM) already wrote every pair in
+-        // encounter order during the join, so the buffered dump is skipped.
+-        if (gate3_pair_out && !gate3_stream && !gate3_count_only) {
++        // The streaming paths (GATE3_PAIR_STREAM, GATE15_PER_THREAD_STREAM)
++        // already wrote every pair during the join, so the buffered dump is
++        // skipped.
++        if (gate3_pair_out && !gate3_stream && !gate15_per_thread && !gate3_count_only) {
+             std::ofstream gate3_f(gate3_pair_out);
+             size_t gate3_total = 0;
+             for (auto& gate3_pb : gate3_pair_bufs) {
+@@ -522,6 +562,18 @@
+                       << " pairs=" << gate3_stream_total
+                       << " threads=1 streamed=1 bytes=" << (long long)sz << "\n";
+         }
++        if (gate15_per_thread) {
++            size_t gate15_total = 0;
++            for (int gate15_t = 0; gate15_t < (int)gate15_fs.size(); gate15_t++) {
++                gate15_fs[gate15_t]->flush();
++                gate15_fs[gate15_t]->close();
++                gate15_total += gate15_thread_total[gate15_t];
++            }
++            std::cerr << "[gate15] pair_dump=" << gate3_pair_out
++                      << " pairs=" << gate15_total
++                      << " threads=" << gate15_fs.size()
++                      << " per_thread_stream=1\n";
++        }
+         if (gate3_count_only) {
+             size_t gate3_count_total = 0;
+             for (size_t v : gate3_count_bufs) gate3_count_total += v;

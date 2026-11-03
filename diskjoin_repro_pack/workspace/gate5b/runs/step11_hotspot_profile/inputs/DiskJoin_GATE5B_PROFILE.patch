@@ -1,0 +1,163 @@
+--- runs/step11_hotspot_profile/inputs/DiskJoin.h.before	2026-11-03 16:12:45.608687501 +0800
++++ instrumented/DiskJoin/lib/DiskJoin.h	2026-11-03 16:13:49.216157949 +0800
+@@ -5,6 +5,8 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <fstream>
++#include <chrono>
++#include <ctime>
+ #include <omp.h>
+ #include "Kmeans.h"
+ #include "ClusterIO.h"
+@@ -18,13 +20,37 @@
+     }
+ 
+     void search(ConfigReader config) {
++        // [GATE5B-STEP11] env-gated coarse phase profiler (wall + process CPU).
++        // Coarse boundaries only: one timer pair per phase, per cluster
++        // (preload vs compute) and per cache-access type; NEVER per distance
++        // call. The sub-slots FIND/READ/PUSH nest inside PRELOAD, so they must
++        // NOT be added to PRELOAD again. SEARCH_TOTAL encloses everything and
++        // is reported separately. Purely additive: unset -> reference
++        // behaviour is byte-identical (no logic, ordering or counter change).
++        const bool gp = getenv("GATE5B_PROFILE") != nullptr;
++        enum { P_META, P_GRAPH, P_TASKPREP, P_SETUP, P_GORDER, P_JJOIN,
++               P_PRELOAD, P_FIND, P_READ, P_PUSH, P_COMPUTE, P_RESULT, P_N };
++        static const char* const gp_names[P_N] = {
++            "meta", "graph", "taskprep", "setup", "gorder", "join_setup",
++            "preload", "find", "read", "push", "compute", "result" };
++        double pw[P_N] = {0}, pc[P_N] = {0};
++        auto gnow = []() { return std::chrono::steady_clock::now(); };
++        auto gcpu = []() { return (double)clock() / (double)CLOCKS_PER_SEC; };
++        auto gacc = [&](std::chrono::steady_clock::time_point w0, double c0, int s) {
++            pw[s] += std::chrono::duration<double>(gnow() - w0).count();
++            pc[s] += gcpu() - c0;
++        };
++        auto g_search_w0 = gnow(); double g_search_c0 = gcpu();
+         float epsilon = sqrt(config.radius);
+         ClusterReader cluster_reader(config.cluster_file, config.metadata_file, config.K);
++        auto g_w0 = gnow(); double g_c0 = gcpu();
+         cluster_reader.readMetaData();
++        gacc(g_w0, g_c0, P_META);
+         size_t max_comp = cluster_reader.n / cluster_reader.cluster_num * config.K;
+         size_t cluster_num = cluster_reader.cluster_num;
+         size_t empty_count = 0;
+         size_t d = cluster_reader.d;
++        auto g_w1 = gnow(); double g_c1 = gcpu();
+         hnswlib::L2Space space(d);
+         hnswlib::HierarchicalNSW<float>* graph = new hnswlib::HierarchicalNSW<float>(&space, config.hnsw_file);
+         graph->radii = cluster_reader.radii;
+@@ -33,6 +59,7 @@
+         float* centroids = cluster_reader.centroids.data();
+         std::vector<std::vector<size_t>> tasks(cluster_num);
+         graph->setEf(1000);
++        gacc(g_w1, g_c1, P_GRAPH);
+         int len = 500;
+         std::vector<float> arcos_list(len + 1);
+         float sc = len / 2;
+@@ -47,6 +74,7 @@
+             int index = x*len/2 + len/2;
+             return arcos_list[index];
+         };
++        auto g_w2 = gnow(); double g_c2 = gcpu();
+ #pragma omp parallel for
+         for (size_t i = 0; i < cluster_num; i++) {
+             auto top_candidates = graph->knnSearchBaseLayer(i, config.K);
+@@ -90,11 +118,13 @@
+             }
+         }
+         delete graph;
++        gacc(g_w2, g_c2, P_TASKPREP);
+         size_t task_num = 0, max_task_num = 0;
+         for (size_t i = 0; i < cluster_num; i++) {
+             task_num += tasks[i].size();
+             if (tasks[i].size() > max_task_num) max_task_num = tasks[i].size();
+         }
++        auto g_w3 = gnow(); double g_c3 = gcpu();
+         std::vector<size_t> perm(cluster_num);
+         std::vector<size_t> order(cluster_num);
+         std::vector<std::vector<size_t>> reordered_tasks(cluster_num);
+@@ -107,6 +137,7 @@
+         }
+         size_t budget = (size_t)(config.mem_budget * 1024 * 1024 * 1024);
+         size_t length = cluster_reader.max_points * d;
++        gacc(g_w3, g_c3, P_SETUP);
+         // [GATE4B0] env-gated Gorder window override. The window normally
+         // derives from mem_budget (budget/4/length/K*2) - the SAME knob that
+         // sets the Cache capacity (budget/4/length) and the build-time
+@@ -116,7 +147,10 @@
+         size_t g4b0_window = budget / 4 / length / config.K * 2;
+         const char* g4b0_window_env = getenv("GATE4B0_WINDOW");
+         if (g4b0_window_env) g4b0_window = strtoull(g4b0_window_env, nullptr, 10);
++        auto g_w4 = gnow(); double g_c4 = gcpu();
+         perm = order_gorder(shuffled_tasks, g4b0_window);
++        gacc(g_w4, g_c4, P_GORDER);
++        auto g_w5 = gnow(); double g_c5 = gcpu();
+         // [GATE4B0] env-gated task-order override applied AFTER Gorder: perm
+         // maps bucket -> slot, so overriding perm only changes which slot a
+         // bucket is processed in (and hence the cache access sequence).
+@@ -238,6 +272,7 @@
+ 
+         Cache cache(budget, length);
+         cache.init(reordered_tasks);
++        gacc(g_w5, g_c5, P_JJOIN);
+         float sum = 0;
+         size_t count = 0;
+         float disk_time = 0;
+@@ -293,17 +328,27 @@
+             }
+         };
+         for (size_t i = 0; i < cluster_num; i++) {
++            auto g_pl_w0 = gnow(); double g_pl_c0 = gcpu();
+             auto target_cluster = order[i];
+             auto& target_tasks = reordered_tasks[i];
+             for (size_t j = 0; j < target_tasks.size(); j++) {
+                 auto neighbor_cluster = target_tasks[j];
+-                if (!cache.find(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d)) {
++                auto g_f_w0 = gnow(); double g_f_c0 = gcpu();
++                bool g_found = cache.find(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d);
++                gacc(g_f_w0, g_f_c0, P_FIND);
++                if (!g_found) {
++                    auto g_r_w0 = gnow(); double g_r_c0 = gcpu();
+                     cluster_reader.posixDirectReadCluster(neighbor_cluster, data.data() + j * length);
++                    gacc(g_r_w0, g_r_c0, P_READ);
++                    auto g_p_w0 = gnow(); double g_p_c0 = gcpu();
+                     cache.push(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d);
++                    gacc(g_p_w0, g_p_c0, P_PUSH);
+                 }
+             }
++            gacc(g_pl_w0, g_pl_c0, P_PRELOAD);
+             
+             if (bucket_sizes[target_cluster] == 0) continue;
++            auto g_cp_w0 = gnow(); double g_cp_c0 = gcpu();
+ #pragma omp parallel for schedule(dynamic) reduction(+:sum) reduction(+:count) reduction(+:dist_comp)
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+@@ -337,7 +382,9 @@
+                     }
+                 }
+             }
++            gacc(g_cp_w0, g_cp_c0, P_COMPUTE);
+         }
++        auto g_w6 = gnow(); double g_c6 = gcpu();
+         std::cout << "recall = " << 1.0 * count / config.gt << "\n";
+         cache.g4a_stats(); // [GATE4A] env-gated cache mechanism statistics
+         // [GATE4B1] env-gated I/O accounting: posixDirectReadCluster is the
+@@ -387,5 +434,17 @@
+             std::cerr << "[gate3] count_only=1 pairs=" << gate3_count_total
+                       << " threads=" << gate3_count_bufs.size() << "\n";
+         }
++        gacc(g_w6, g_c6, P_RESULT);
++        // [GATE5B-STEP11] coarse phase profile (only when GATE5B_PROFILE set).
++        // FIND/READ/PUSH are sub-slots of PRELOAD; SEARCH_TOTAL encloses all
++        // slots. Wall vs process-CPU separates blocking O_DIRECT waits.
++        if (gp) {
++            double sw = std::chrono::duration<double>(gnow() - g_search_w0).count();
++            double sc = gcpu() - g_search_c0;
++            for (int s = 0; s < P_N; s++)
++                fprintf(stderr, "[gate5b-prof] %-10s wall_s=%.6f cpu_s=%.6f\n",
++                        gp_names[s], pw[s], pc[s]);
++            fprintf(stderr, "[gate5b-prof] SEARCH_TOTAL wall_s=%.6f cpu_s=%.6f\n", sw, sc);
++        }
+     }
+ };

@@ -1,0 +1,60 @@
+{
+  "name": "bigann1m",
+  "status": "BLOCKED: dataset absent on server; downloads forbidden",
+  "dataset": "BigANN / SIFT1B-derived 1,000,000-vector base subset (128-d)",
+  "purpose": "Validation criteria a BigANN1M data manifest MUST satisfy before any Gate 5B 1M execution. These are criteria, NOT a manifest: a real manifest must be generated from the real file by scripts/make_data_manifest.py and validated.",
+  "required_facts": {
+    "n": 1000000,
+    "dimension": 128,
+    "bvecs_bytes": 132000000,
+    "bvecs_record_layout": "per record: uint32 LE dimension prefix (==128), then 128 uint8",
+    "fbin_header": "uint32 LE n (==1000000), uint32 LE d (==128)",
+    "fbin_bytes": 512000008,
+    "bytes_formula": "bvecs = n*(d+4); fbin = 8 + n*d*4"
+  },
+  "provenance_requirements": [
+    "Source must be the BigANN base (e.g. bigann_base.bvecs from the ANN-benchmarks / SIFT1B distribution), first 1,000,000 records.",
+    "Record a SHA-256 of the exact source file and of each derived fbin/bvecs.",
+    "bvecs<->fbin coordinate conversion must be cross-checked by oracle/independent_check.py (all coordinates equal) before use.",
+    "Do not derive the 1M set by duplicating/upscaling the 100K subset; that is a substitute experiment and is out of scope."
+  ],
+  "generate_manifest_command": "python3 -B scripts/make_data_manifest.py --name bigann1m --fbin <bigann1m.fbin> --bvecs <bigann1m.bvecs> --expect-n 1000000 --expect-d 128 --out configs/manifest_bigann1m.json",
+  "scale_driven_parameter_changes": {
+    "cluster_num": {
+      "100k_value": 1000,
+      "1m_value": 1000,
+      "reason": "Keep 1000 for comparability; revisit only if cache/chunk sizing demands it, and document. NOT changed in this round (no 1M run)."
+    },
+    "mem_budget": {
+      "rule": "10% of data bytes",
+      "100k_value": 0.00476837158203125,
+      "100k_data_bytes": 51200000,
+      "100k_cache_bytes": 5120000,
+      "1m_data_bytes": 512000000,
+      "1m_cache_bytes": 51200000,
+      "1m_value": 0.0476837158203125,
+      "reason": "Cache budget is defined as 10% of the joined data bytes, so it scales with n*d*4. Report configured budget, actual allocation, other working memory and process peak RSS separately; never equate cache %% with total-memory %%."
+    },
+    "threshold_squared": {
+      "value": 73984,
+      "changed": false,
+      "reason": "Fixed by protocol. Not re-searched at any scale."
+    },
+    "K": {"100k_value": 24, "changed": false},
+    "error_bound": {"100k_value": 0.1, "changed": false},
+    "gt_config_field": {
+      "note": "DiskJoin.h samples ids divisible by 100000 for its in-binary 'sampled recall' print. At n=1,000,000 that selects 10 seed ids, not just id 0. This in-binary number is NOT the reported metric; the protocol reports externally-computed full-neighborhood GT over the fixed 200 evaluation endpoints via oracle/evaluate.py. Must be stated explicitly at 1M."
+    }
+  },
+  "blocking_evidence": {
+    "searched": "/home/qch/DiskJoin (repo) and / , excluding /proc,/sys; files >300 MB; *.fbin,*.bvecs,*.gz,*.tar with size>10MB; /data mount (7.3T, empty except root-only lost+found); /home/amax unreadable",
+    "found_only": [
+      "workspace/gate5a/data/bigann100k.fbin (51,200,008 B, 100,000 x 128)",
+      "workspace/gate5a/data/bigann100k.bvecs (13,200,000 B, 100,000 x 128)",
+      "workspace/gate5a/data/bigann_base.bvecs.gz.prefix24m (25,165,824 B gzip PREFIX; inner gzip name '1milliard.p1.siftbin')"
+    ],
+    "why_prefix24m_unusable": "It is a truncated 24 MB prefix of a gzip stream whose original is the 1-billion-vector SIFT1B base. A gzip prefix cannot be reliably decompressed past its first deflate block, and it is not a complete record-aligned fbin/bvecs of 1,000,000 128-d vectors. Using it would be fabricating/truncating a substitute dataset.",
+    "downloads": "forbidden by task constraints",
+    "conclusion": "Step 3 1M data validation and Step 4 1M execution cannot start. Report blocker; do not run a substitute-data experiment."
+  }
+}

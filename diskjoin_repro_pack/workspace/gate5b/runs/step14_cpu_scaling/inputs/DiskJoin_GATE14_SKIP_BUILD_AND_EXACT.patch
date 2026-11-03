@@ -1,0 +1,88 @@
+--- runs/step14_cpu_scaling/inputs/DiskJoin.h.before_step14	2026-11-03 16:41:58.735661783 +0800
++++ instrumented/DiskJoin/lib/DiskJoin.h	2026-11-03 17:33:44.003557659 +0800
+@@ -17,6 +17,14 @@
+ 
+ struct DiskJoin {
+     void build(ConfigReader config) {
++        // [GATE14] experiment control: the build phase is NOT deterministic
++        // across thread counts (its graph.addPoint runs under `#pragma omp
++        // parallel for`, so concurrent HNSW insertion changes the graph for
++        // OMP_NUM_THREADS > 1). To isolate the compute-loop thread scaling this
++        // gate lets a run REUSE a single fixed, verified graph/task set
++        // (cluster_file/metadata_file/hnsw_file from config) instead of
++        // rebuilding it. Unset -> build runs exactly as before.
++        if (getenv("GATE14_SKIP_BUILD")) return;
+         one_level_kmeans(config);
+     }
+ 
+@@ -279,6 +287,14 @@
+         float disk_time = 0;
+         float comp_time = 0;
+         float dist_comp = 0;
++        // [GATE14] exact integer distance-call counter (diagnostic only).
++        // `dist_comp` above is a float and therefore SATURATES for large
++        // per-cluster regions (> 2^24 ~ 1.7e7 evaluations in one parallel
++        // region), so its reported value is thread-partition dependent in the
++        // original code. This exact size_t counter, incremented at exactly the
++        // same sites, is printed (gated) to prove the true evaluation count is
++        // invariant across thread counts. It changes no join logic.
++        size_t g14_dist_exact = 0;
+         // [GATE3] env-gated pair-output instrumentation. It records the same
+         // hit condition used by the reference and does not alter candidate
+         // generation, ordering, cache behaviour, pruning or distance logic.
+@@ -358,7 +374,7 @@
+             
+             if (bucket_sizes[target_cluster] == 0) continue;
+             auto g_cp_w0 = gnow(); double g_cp_c0 = gcpu();
+-#pragma omp parallel for schedule(dynamic) reduction(+:sum) reduction(+:count) reduction(+:dist_comp)
++#pragma omp parallel for schedule(dynamic) reduction(+:sum) reduction(+:count) reduction(+:dist_comp) reduction(+:g14_dist_exact)
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+                 float* vec1 = data.data() + j * d;
+@@ -387,7 +403,7 @@
+                             for (int b = 0; b < gcnt; b++) {
+                                 float dist = g_d[b];
+                                 size_t id2 = g_id[b];
+-                                dist_comp++;
++                                dist_comp++; g14_dist_exact++;
+                                 if (dist < epsilon * epsilon) {
+                                     if (id1 % 100000 == 0) count++;
+                                     if (id2 % 100000 == 0) count++;
+@@ -416,7 +432,7 @@
+                             for (int b = 0; b < gcnt; b++) {
+                                 float dist1 = g_d[b];
+                                 size_t id2 = g_id[b];
+-                                dist_comp++;
++                                dist_comp++; g14_dist_exact++;
+                                 if (dist1 < epsilon * epsilon) {
+                                     if (id1 % 100000 == 0) count++;
+                                     if (id2 % 100000 == 0) count++;
+@@ -431,7 +447,7 @@
+                     if (id2 >= id1) continue;
+                     float* vec2 = data.data() + l * d;
+                     float dist = dist_l2(vec1, vec2, &d);
+-                    dist_comp++;
++                    dist_comp++; g14_dist_exact++;
+                     if (dist < epsilon * epsilon) {
+                         if (id1 % 100000 == 0) count++;
+                         if (id2 % 100000 == 0) count++;
+@@ -446,7 +462,7 @@
+                         auto id2 = assignment[neighbor_cluster][l];
+                         float* vec2 = data.data() + k * length + l * d;
+                         float dist1 = dist_l2(vec1, vec2, &d);
+-                        dist_comp++;
++                        dist_comp++; g14_dist_exact++;
+                         if (dist1 < epsilon * epsilon) {
+                             if (id1 % 100000 == 0) count++;
+                             if (id2 % 100000 == 0) count++;
+@@ -477,6 +493,10 @@
+                       << " sampled_count=" << count
+                       << " gt=" << config.gt << "\n";
+         }
++        // [GATE14] exact integer distance-call count (diagnostic; see decl).
++        if (getenv("GATE14_EXACT_COUNT")) {
++            std::cerr << "[gate14-exact] dist_comp_exact=" << g14_dist_exact << "\n";
++        }
+         // [GATE3] write per-thread pair buffers (thread-local -> no locking).
+         // The streaming path (GATE3_PAIR_STREAM) already wrote every pair in
+         // encounter order during the join, so the buffered dump is skipped.

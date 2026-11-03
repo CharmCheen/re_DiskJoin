@@ -1,0 +1,65 @@
+# Gate 5B final integrity 2026-11-03T12:42:39+08:00
+REPORT.md: 316 lines, sha256 181e761cd174c9619d5d03e8ad52d0f30a3d8ba5caf5e98ea9d294c58d9452df
+
+=== gate5b tree (depth 2) ===
+.
+./configs
+./configs/bigann1m.validation_criteria.json
+./data
+./data/manifest_bigann100k.json
+./instrumented
+./instrumented/DiskJoin
+./logs
+./logs/gate5b_artifact_sha256.txt
+./logs/source_sha256_after.txt
+./logs/source_sha256_before.txt
+./logs/step1_gate5ar_evidence_verification.log
+./logs/step2_readpath_asan_100k.log
+./logs/step2_readpath_regression.log
+./logs/step2_readpath_test.log
+./logs/step3_1m_blocker.log
+./logs/step3_data_manifest.log
+./logs/step3_oracle_eval_100k.log
+./logs/step3_unit_tests.log
+./logs/step5_final_integrity.log
+./oracle
+./oracle/evaluate.py
+./oracle/gt_calib.cpp
+./oracle/independent_check.py
+./oracle/sample_endpoints.py
+./patches
+./patches/clusterio_read_safety.patch
+./patches/manifest_refactor.patch
+./REPORT.md
+./runs
+./runs/step2_100k
+./runs/step3_oracle100k
+./scripts
+./scripts/check_patches.py
+./scripts/check_static.py
+./scripts/make_data_manifest.py
+./scripts/perf_prefetch.sh
+./scripts/regression_compare.py
+./scripts/run_100k_regression.sh
+./scripts/run_linux.sh
+./scripts/run_local.sh
+./scripts/validate_run.py
+./sources
+./tests
+./tests/hnsw_regression.cpp
+./tests/test_build_init.py
+./tests/test_clusterio_read.cpp
+./tests/test_clusterio_read_negative.cpp
+./tests/test_correctness.py
+
+=== git status ===
+ M diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh
+?? diskjoin_repro_pack/workspace/gate5ar/FOLLOWUP_REPORT.md
+?? diskjoin_repro_pack/workspace/gate5ar/evidence/
+?? diskjoin_repro_pack/workspace/gate5ar/runs/
+?? diskjoin_repro_pack/workspace/gate5ar/scripts/perf_prefetch.sh
+?? diskjoin_repro_pack/workspace/gate5ar/tests/test_build_init.py
+?? diskjoin_repro_pack/workspace/gate5b/
+
+=== tracked changes ===
+diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh

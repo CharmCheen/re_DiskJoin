@@ -1,0 +1,164 @@
+# Gate 5B manifest-driven refactor of Oracle/tests/validation (vs gate5ar frozen copies)
+
+======== oracle/independent_check.py ========
+--- ../gate5ar/oracle/independent_check.py	2026-11-03 11:34:01.245441998 +0800
++++ oracle/independent_check.py	2026-11-03 12:38:16.166053071 +0800
+@@ -9,16 +9,24 @@
+ from evaluate import load_gt
+ 
+ 
+-def check(bvecs, fbin, gt_path, diagnostic_path):
++def check(bvecs, fbin, gt_path, diagnostic_path, manifest_path):
++    # n / d / file hashes come from the VALIDATED data manifest, not 100K literals.
++    man = json.loads(Path(manifest_path).read_text())
++    n, d = int(man["n"]), int(man["dimension"])
++    for key, path in (("fbin", fbin), ("bvecs", bvecs)):
++        want = man.get(key, {}).get("sha256")
++        got = hashlib.sha256(Path(path).read_bytes()).hexdigest()
++        if want is not None and got != want:
++            raise ValueError(f"{key} sha256 != manifest")
+     raw = Path(bvecs).read_bytes()
+     with Path(fbin).open("rb") as f:
+-        n, d = struct.unpack("<II", f.read(8))
++        hn, hd = struct.unpack("<II", f.read(8))
+         flat = array.array("f")
+         flat.frombytes(f.read())
+     if sys.byteorder != "little":
+         flat.byteswap()
+-    if (n, d) != (100000, 128) or len(flat) != n*d or len(raw) != n*(d+4):
+-        raise ValueError("expected complete BigANN100K 128d inputs")
++    if (hn, hd) != (n, d) or len(flat) != n*d or len(raw) != n*(d+4):
++        raise ValueError(f"input does not match manifest (n={n}, d={d})")
+     for i in range(n):
+         start = i*(d+4)
+         if struct.unpack_from("<I", raw, start)[0] != d:
+@@ -44,5 +52,6 @@
+ if __name__ == "__main__":
+     p = argparse.ArgumentParser()
+     p.add_argument("bvecs"); p.add_argument("fbin"); p.add_argument("gt"); p.add_argument("diagnostic")
++    p.add_argument("--manifest", required=True, help="validated data manifest JSON")
+     a = p.parse_args()
+-    print(json.dumps(check(a.bvecs, a.fbin, a.gt, a.diagnostic), indent=2))
++    print(json.dumps(check(a.bvecs, a.fbin, a.gt, a.diagnostic, a.manifest), indent=2))
+
+======== oracle/sample_endpoints.py ========
+--- ../gate5ar/oracle/sample_endpoints.py	2026-11-03 11:34:01.245441998 +0800
++++ oracle/sample_endpoints.py	2026-11-03 12:38:20.626055866 +0800
+@@ -20,16 +20,26 @@
+ 
+ def main():
+     p = argparse.ArgumentParser()
+-    p.add_argument("--n", type=int, default=100000)
++    p.add_argument("--n", type=int, default=None)
++    p.add_argument("--manifest", default=None, help="validated data manifest JSON (provides n, dimension)")
+     p.add_argument("--calibration", type=int, default=2000)
+     p.add_argument("--evaluation", type=int, default=200)
+     p.add_argument("--out", type=Path, required=True)
+     a = p.parse_args()
+-    c, e = split_ids(a.n, a.calibration, a.evaluation)
++    if a.manifest is not None:
++        man = json.loads(Path(a.manifest).read_text())
++        n, dimension = int(man["n"]), int(man["dimension"])
++        if a.n is not None and a.n != n:
++            raise SystemExit(f"--n {a.n} disagrees with manifest n {n}")
++    elif a.n is not None:
++        n, dimension = a.n, 128
++    else:
++        raise SystemExit("provide --manifest (preferred) or --n")
++    c, e = split_ids(n, a.calibration, a.evaluation)
+     a.out.mkdir(parents=True, exist_ok=False)
+     for name, ids in [("calibration.txt", c), ("evaluation.txt", e), ("diagnostic.txt", [0])]:
+         (a.out / name).write_text("".join(f"{i}\n" for i in ids))
+-    manifest = dict(n=a.n, dimension=128, calibration_n=len(c), evaluation_n=len(e),
++    manifest = dict(n=n, dimension=dimension, calibration_n=len(c), evaluation_n=len(e),
+                     calibration_seed=2026110301, evaluation_seed=2026110302,
+                     diagnostic=[0], overlap=0, python=sys.version,
+                     design="SRS without replacement from 1..n-1; evaluation from calibration complement",
+
+======== oracle/gt_calib.cpp ========
+--- ../gate5ar/oracle/gt_calib.cpp	2026-11-03 11:34:01.245441998 +0800
++++ oracle/gt_calib.cpp	2026-11-03 12:38:44.492071269 +0800
+@@ -2,6 +2,7 @@
+ #include <algorithm>
+ #include <cstdint>
+ #include <cstdio>
++#include <cstdlib>
+ #include <fstream>
+ #include <iostream>
+ #include <set>
+@@ -17,7 +18,20 @@
+     const uint8_t* row(size_t i) const { return values.data() + i * d; }
+ };
+ 
+-static Dataset load(const char* path) {
++// Upper bound on n, taken from the validated data manifest via the environment
++// (GATE5B_ORACLE_MAX_N) so it is no longer a 100K-only literal. The 1e6 default
++// is only a safety ceiling matched to the intended 1M dataset; the run harness
++// must set it equal to the manifest n.
++static size_t max_n_from_env() {
++    const char* s = std::getenv("GATE5B_ORACLE_MAX_N");
++    if (!s || !*s) return 1000000;
++    char* end = nullptr;
++    unsigned long long v = std::strtoull(s, &end, 10);
++    if (end == s || *end || v == 0) throw std::runtime_error("bad GATE5B_ORACLE_MAX_N");
++    return static_cast<size_t>(v);
++}
++
++static Dataset load(const char* path, size_t max_n) {
+     std::ifstream in(path, std::ios::binary);
+     if (!in) throw std::runtime_error("cannot open bvecs");
+     Dataset x;
+@@ -33,7 +47,7 @@
+         in.read(reinterpret_cast<char*>(row), Dataset::d);
+         if (in.gcount() != Dataset::d) throw std::runtime_error("truncated vector");
+         x.values.insert(x.values.end(), row, row + Dataset::d);
+-        if (x.n() > 100000) throw std::runtime_error("bounded oracle: n > 100000");
++        if (x.n() > max_n) throw std::runtime_error("bounded oracle: n exceeds manifest bound");
+     }
+     if (!x.n()) throw std::runtime_error("empty dataset");
+     return x;
+@@ -76,7 +90,7 @@
+ int main(int argc, char** argv) {
+     try {
+         if (argc < 4) throw std::runtime_error("calib bvecs ids [m,...] | gt bvecs ids m output");
+-        Dataset x = load(argv[2]);
++        Dataset x = load(argv[2], max_n_from_env());
+         auto ids = read_ids(argv[3], x.n());
+         std::string mode(argv[1]);
+         if (mode == "calib") {
+
+======== scripts/validate_run.py ========
+--- ../gate5ar/scripts/validate_run.py	2026-11-03 11:34:01.248442014 +0800
++++ scripts/validate_run.py	2026-11-03 12:38:33.908064346 +0800
+@@ -5,7 +5,9 @@
+ from pathlib import Path
+ 
+ 
+-def validate(root, baseline=None, through_mode="prefetch_off"):
++def validate(root, baseline=None, through_mode="prefetch_off", expected_n=None):
++    if expected_n is None:
++        raise ValueError("expected_n (from validated data manifest) is required")
+     diag_gt = int((root / "diagnostic.txt").read_text().split()[1])
+     digests = {}
+     modes = ["normal", "asan", "prefetch_off"]
+@@ -20,7 +22,7 @@
+             if kv.get(key) != "1": raise ValueError(f"{mode}: {key}")
+         for key in ["empty_tasks", "head_mismatch", "self_missing"]:
+             if kv.get(key) != "0": raise ValueError(f"{mode}: {key}")
+-        if kv.get("bucket_sum") != "100000": raise ValueError("wrong cardinality")
++        if kv.get("bucket_sum") != str(expected_n): raise ValueError("wrong cardinality")
+         stat = next(x for x in text.splitlines() if x.startswith("[gate3-stat]"))
+         sampled = int(re.search(r"sampled_count=(\d+)", stat).group(1))
+         if int(re.search(r"gt=(\d+)", stat).group(1)) != diag_gt:
+@@ -53,8 +55,10 @@
+     p = argparse.ArgumentParser(); p.add_argument("root", type=Path)
+     p.add_argument("--baseline", type=Path)
+     p.add_argument("--through-mode", choices=["normal", "asan", "prefetch_off"], default="prefetch_off")
++    p.add_argument("--manifest", type=Path, required=True, help="validated data manifest JSON (provides n)")
+     a = p.parse_args()
+-    result = validate(a.root, a.baseline, a.through_mode)
++    expected_n = int(json.loads(a.manifest.read_text())["n"])
++    result = validate(a.root, a.baseline, a.through_mode, expected_n)
+     print(json.dumps(result, indent=2))
+     if result["legacy_baseline_identical"] is False:
+         raise SystemExit("STOP: functional regression versus frozen Gate5A dumps")

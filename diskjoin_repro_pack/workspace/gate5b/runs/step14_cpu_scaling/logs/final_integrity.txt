@@ -1,0 +1,65 @@
+=== 1M per-run counts (must all be equal) ===
+r1_t1 rc=0 pairs=398737742 threads=1
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r2_t2 rc=0 pairs=398737742 threads=2
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r3_t4 rc=0 pairs=398737742 threads=4
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r4_t2 rc=0 pairs=398737742 threads=2
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r5_t4 rc=0 pairs=398737742 threads=4
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r6_t1 rc=0 pairs=398737742 threads=1
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r7_t4 rc=0 pairs=398737742 threads=4
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r8_t1 rc=0 pairs=398737742 threads=1
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+r9_t2 rc=0 pairs=398737742 threads=2
+sampled_count=7165
+dist_comp_exact=14090491387
+recall = 0.855114
+
+=== distinct exact counts / pairs / sampled (should be 1 each) ===
+dist_comp_exact=[0-9]+ distinct=dist_comp_exact=14090491387 
+pairs=[0-9]+           distinct=pairs=398737742 
+sampled_count=[0-9]+   distinct=sampled_count=7165 
+
+=== sanitizer/error strings (must be none) ===
+none
+
+=== affinity per run ===
+r1_t1: 
+r2_t2: 2 3 
+r3_t4: 2 3 4 5 
+r4_t2: 2 3 
+r5_t4: 2 3 4 5 
+r6_t1: 
+r7_t4: 2 3 4 5 
+r8_t1: 
+r9_t2: 2 3 
+
+=== step14 disk ===
+407M	runs/step14_cpu_scaling
+0.397 GiB (cap 2.0)
+=== git HEAD unchanged / nothing committed ===
+ae56a37f9ded89e4d7d7e6fac1077e9e5d7f3c5e
+=== old evidence untouched (newer than 17:25:00)? ===
+(empty above = untouched)
+now 2026-11-03T17:57:54+08:00

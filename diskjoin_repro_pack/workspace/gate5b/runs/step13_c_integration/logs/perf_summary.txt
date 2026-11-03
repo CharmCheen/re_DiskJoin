@@ -1,0 +1,23 @@
+Step 13 — 1M perf: baseline A (GATE13_C_PATH off) vs C path (on)
+Fixed: 10% cache, radius 73984, cluster_num 1000, K 24, error_bound 0.1, gt 8379,
+GATE4B0_WINDOW=2, OMP_NUM_THREADS=1, taskset -c 2, pair/trace output OFF.
+Order A/C/C/A/A/C. proc = build + search; elapsed = /usr/bin/time wall.
+
+run    var   build_s  search_s  compute_s  preload_s   proc_s  elapsed  rss_MiB     dist_comp       pairs  reads
+----------------------------------------------------------------------------------------------------------------
+r01_A  A      16.564   286.226    277.485      8.408  302.790  302.800     97.5   10701217792   398737742   4670
+r02_C  C      15.837   247.577    238.793      8.453  263.414  263.420     97.5   10701217792   398737742   4670
+r03_C  C      15.801   247.445    238.720      8.393  263.246  263.250     97.5   10701217792   398737742   4670
+r04_A  A      15.801   286.233    277.363      8.537  302.034  302.040     97.5   10701217792   398737742   4670
+r05_A  A      15.752   285.660    276.780      8.550  301.412  301.410     97.5   10701217792   398737742   4670
+r06_C  C      15.920   249.282    240.494      8.459  265.201  265.200     97.5   10701217792   398737742   4670
+mean build            A=16.039  C=15.853   reduction=+1.16%   speedup=1.0118x
+mean search           A=286.040  C=248.101   reduction=+13.26%   speedup=1.1529x
+mean compute          A=277.210  C=239.336   reduction=+13.66%   speedup=1.1582x
+mean preload          A=8.498  C=8.435   reduction=+0.74%   speedup=1.0075x
+mean proc(build+search) A=302.079  C=263.954   reduction=+12.62%   speedup=1.1444x
+mean elapsed          A=302.083  C=263.957   reduction=+12.62%   speedup=1.1444x
+mean RSS_kB           A=99858.667  C=99858.667   reduction=+0.00%   speedup=1.0000x
+
+Counts (must match step7 normal): dist_comp=10701217792 sampled_count=7165 pairs=398737742
+Reduction %% = (A-C)/A*100 ; Speedup = A/C. Both reported; they are different quantities.

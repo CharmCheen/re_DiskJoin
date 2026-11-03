@@ -1,0 +1,30 @@
+# Gate 5B (new round) deliverable-1 metadata-only probes -- NO dataset body downloaded
+# date: 2026-11-03T12:50:37+08:00  host: amax  HEAD: 980bc3956dd2f16f5f521783f7314430262a9966
+
+=== P1. FTP HEAD on bigann_base.bvecs.gz (metadata only) ===
+Last-Modified: Wed, 16 Jun 2010 20:38:39 GMT
+Content-Length: 97941899519
+Accept-ranges: bytes
+rc=0
+
+=== P2. official MD5SUM (tiny metadata file) ===
+4346fa68813d71e7f3d75d2faba669ec  bigann_base.bvecs.gz
+f40646ba10e152229818e82cd5bd84b2  bigann_gnd.tar.gz
+69535458f804e99358afe4320e2e2c6a  bigann_learn.bvecs.gz
+b5f61050d3c435911d54db122b5469b5  bigann_query.bvecs.gz
+rc=0
+
+=== P3. Range-capability test: request only 1 byte at offset 0 (HEAD-level, no body kept) ===
+http_code=225 size_download=1 ranged=0
+rc=0
+
+=== P4. HTTP mirror reachability (dl.fbaipublicfiles) HEAD only ===
+HTTP/2 200 
+content-type: application/octet-stream
+content-length: 128000000008
+rc=0
+
+=== P5. local archived gz prefix (from Gate 5A), for reference only ===
+25165824 bytes  ../gate5a/data/bigann_base.bvecs.gz.prefix24m
+00000000: 1f8b 0808 e792 034c 0003 316d 696c 6c69  .......L..1milli
+0b2ced404942c55c67fa8434d3e492fbb4643a288714e59ab2979996634eb58d  ../gate5a/data/bigann_base.bvecs.gz.prefix24m

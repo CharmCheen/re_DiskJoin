@@ -1,0 +1,67 @@
+# Gate 5B unit tests (manifest-driven oracle/validator)
+# date: 2026-11-03T12:40:01+08:00
+
+test_missing_build_dir_is_recoverable (test_build_init.BuildDirInitRegression) ... ok
+test_run_linux_creates_build_dir_before_units (test_build_init.BuildDirInitRegression) ... ERROR
+test_run_local_still_initialises_scratch (test_build_init.BuildDirInitRegression) ... ERROR
+test_frozen_oracle_header_offset_reproducer (test_correctness.OracleTests) ... ok
+test_last_four_dimensions_calib_and_gt (test_correctness.OracleTests) ... ok
+test_random_cross_implementation (test_correctness.OracleTests) ... ok
+test_reject_bad_inputs_and_overwrite (test_correctness.OracleTests) ... ok
+test_disjoint_reproducible_split (test_correctness.StatisticsTests) ... ok
+test_pair_validation_includes_empty_gt_fp (test_correctness.StatisticsTests) ... ok
+test_sampler_and_evaluator_cli_diagnostic_is_separate (test_correctness.StatisticsTests) ... ok
+test_staged_server_validator_rejects_bad_invariant_and_rss (test_correctness.StatisticsTests) ... ok
+test_undefined_and_degenerate_intervals (test_correctness.StatisticsTests) ... ok
+test_weighted_mean_precision_and_empty_endpoint (test_correctness.StatisticsTests) ... ok
+
+======================================================================
+ERROR: test_run_linux_creates_build_dir_before_units (test_build_init.BuildDirInitRegression)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/tests/test_build_init.py", line 29, in test_run_linux_creates_build_dir_before_units
+    script = LINUX.read_text()
+  File "/usr/lib/python3.10/pathlib.py", line 1134, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+  File "/usr/lib/python3.10/pathlib.py", line 1119, in open
+    return self._accessor.open(self, mode, buffering, encoding, errors,
+FileNotFoundError: [Errno 2] No such file or directory: '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/scripts/run_linux.sh'
+
+======================================================================
+ERROR: test_run_local_still_initialises_scratch (test_build_init.BuildDirInitRegression)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/tests/test_build_init.py", line 42, in test_run_local_still_initialises_scratch
+    self.assertRegex(LOCAL.read_text(), r'mkdir\s+-p\s+"\$ROOT/build"')
+  File "/usr/lib/python3.10/pathlib.py", line 1134, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+  File "/usr/lib/python3.10/pathlib.py", line 1119, in open
+    return self._accessor.open(self, mode, buffering, encoding, errors,
+FileNotFoundError: [Errno 2] No such file or directory: '/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/scripts/run_local.sh'
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.525s
+
+FAILED (errors=2)
+unittest rc=1
+
+=== rerun after copying run_linux.sh/run_local.sh ===
+test_missing_build_dir_is_recoverable (test_build_init.BuildDirInitRegression) ... ok
+test_run_linux_creates_build_dir_before_units (test_build_init.BuildDirInitRegression) ... ok
+test_run_local_still_initialises_scratch (test_build_init.BuildDirInitRegression) ... ok
+test_frozen_oracle_header_offset_reproducer (test_correctness.OracleTests) ... ok
+test_last_four_dimensions_calib_and_gt (test_correctness.OracleTests) ... ok
+test_random_cross_implementation (test_correctness.OracleTests) ... ok
+test_reject_bad_inputs_and_overwrite (test_correctness.OracleTests) ... ok
+test_disjoint_reproducible_split (test_correctness.StatisticsTests) ... ok
+test_pair_validation_includes_empty_gt_fp (test_correctness.StatisticsTests) ... ok
+test_sampler_and_evaluator_cli_diagnostic_is_separate (test_correctness.StatisticsTests) ... ok
+test_staged_server_validator_rejects_bad_invariant_and_rss (test_correctness.StatisticsTests) ... ok
+test_undefined_and_degenerate_intervals (test_correctness.StatisticsTests) ... ok
+test_weighted_mean_precision_and_empty_endpoint (test_correctness.StatisticsTests) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.549s
+
+OK
+unittest rc=0

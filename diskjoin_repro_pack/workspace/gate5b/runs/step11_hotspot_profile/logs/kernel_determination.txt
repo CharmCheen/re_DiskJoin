@@ -1,0 +1,64 @@
+=== Step 11 — actual distance kernel determination (source + compiled binary) ===
+date: 2026-11-03T16:21:21+08:00
+
+[1] Call path
+  lib/ClusterIO.h:20   auto dist_l2 = utils::L2Sqr;   (global function pointer, indirect call)
+  lib/DiskJoin.h:350   float dist  = dist_l2(vec1, vec2, &d);   dist_comp++
+  lib/DiskJoin.h:365   float dist1 = dist_l2(vec1, vec2, &d);   dist_comp++
+  lib/DiskJoin.h:361   float dist  = dist_l2(vec1, centroids+..., &d);  (point-centroid, NOT counted)
+  utils/dist_func.h:612 static float L2Sqr(...) { #if defined(USE_AVX512)||defined(USE_AVX512)||defined(USE_SSE)
+                                    res = L2SqrSIMD(...); #elif ... }
+  utils/dist_func.h:475 static float L2SqrSIMD(...) { #if defined(USE_AVX512) return L2SqrFloatAVX512(...)
+                                    #elif defined(USE_AVX) ... #elif defined(USE_SSE) ... }
+
+[2] Macro origin (lib/hnswlib/hnswlib.h:1-11): USE_SSE from __SSE__; USE_AVX from __AVX__; USE_AVX512 from __AVX512F__
+    No CODE path defines USE_AVX512 from -DUSE_AVX2; it comes from -march=native setting __AVX512F__.
+
+[3] Compile flags actually used (build/CMakeFiles/main.dir/flags.make):
+CXX_FLAGS =  -fopenmp -DNDEBUG -mtune=native -mavx2 -pthread -mfma -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp-simd -funroll-loops -DUSE_AVX2 -O3 -DNDEBUG   -std=c++11 -O3 -lboost -march=native -Wall -Wno-unused-variable -Wno-unused-function -Wno-reorder -Wno-write-strings -Wno-sign-compare -Wno-unused-result
+
+[4] Symbols in the step11 binary:
+0000000000039010 D dist_
+0000000000039018 D dist_l2
+0000000000010410 t utils::L2Sqr(void const*, void const*, void const*)
+000000000001e420 W hnswlib::L2Space::get_dist_func()
+000000000001e430 W hnswlib::L2Space::get_dist_func_param()
+000000000000fdc0 t hnswlib::L2SqrSIMD4Ext(void const*, void const*, void const*)
+0000000000039020 d hnswlib::L2SqrSIMD16Ext
+000000000000f620 t hnswlib::L2SqrSIMD16ExtAVX(void const*, void const*, void const*)
+000000000000f820 t hnswlib::L2SqrSIMD16ExtSSE(void const*, void const*, void const*)
+000000000000f340 t hnswlib::L2SqrSIMD16ExtAVX512(void const*, void const*, void const*)
+000000000000ffc0 t hnswlib::L2SqrSIMD4ExtResiduals(void const*, void const*, void const*)
+000000000000faf0 t hnswlib::L2SqrSIMD16ExtResiduals(void const*, void const*, void const*)
+000000000000f0f0 t hnswlib::L2Sqr(void const*, void const*, void const*)
+
+[5] Disassembly of utils::L2Sqr (AVX-512 zmm FMA loop):
+   10410:	f3 0f 1e fa          	endbr64 
+   1047d:	62 f1 7c 48 10 34 07 	vmovups (%rdi,%rax,1),%zmm6
+   10488:	62 f1 4c 48 5c 24 01 	vsubps (%rcx,%rax,1),%zmm6,%zmm4
+   10493:	62 f2 5d 48 b8 c4    	vfmadd231ps %zmm4,%zmm4,%zmm0
+   10499:	62 f1 7c 48 10 3c 07 	vmovups (%rdi,%rax,1),%zmm7
+   104a4:	62 f1 44 48 5c 2c 01 	vsubps (%rcx,%rax,1),%zmm7,%zmm5
+   104af:	62 f2 55 48 b8 c5    	vfmadd231ps %zmm5,%zmm5,%zmm0
+   104b5:	62 71 7c 48 10 04 07 	vmovups (%rdi,%rax,1),%zmm8
+   104c0:	62 71 3c 48 5c 0c 01 	vsubps (%rcx,%rax,1),%zmm8,%zmm9
+   104cb:	62 d2 35 48 b8 c1    	vfmadd231ps %zmm9,%zmm9,%zmm0
+   104d1:	62 71 7c 48 10 14 07 	vmovups (%rdi,%rax,1),%zmm10
+   104dc:	62 71 2c 48 5c 1c 01 	vsubps (%rcx,%rax,1),%zmm10,%zmm11
+   104e7:	62 d2 25 48 b8 c3    	vfmadd231ps %zmm11,%zmm11,%zmm0
+   104ed:	62 71 7c 48 10 24 07 	vmovups (%rdi,%rax,1),%zmm12
+   104f8:	62 71 1c 48 5c 2c 01 	vsubps (%rcx,%rax,1),%zmm12,%zmm13
+   10503:	62 d2 15 48 b8 c5    	vfmadd231ps %zmm13,%zmm13,%zmm0
+   10509:	62 71 7c 48 10 34 07 	vmovups (%rdi,%rax,1),%zmm14
+   10514:	62 71 0c 48 5c 3c 01 	vsubps (%rcx,%rax,1),%zmm14,%zmm15
+   1051f:	62 d2 05 48 b8 c7    	vfmadd231ps %zmm15,%zmm15,%zmm0
+
+[6] Instruction census in whole binary:
+    distinct zmm registers used: 16
+    vfmadd*ps count: 114
+
+=== CONCLUSION: the join distance kernel is L2SqrFloatAVX512 (AVX-512F FMA: vsubps + vfmadd231ps on zmm),
+    reached through an OUT-OF-LINE indirect call dist_l2 -> utils::L2Sqr (not inlined). This is determined
+    from the compiled instructions, NOT inferred from /proc/cpuinfo flags. NOTE: the CMakeLists only names
+    -mavx2 -DUSE_AVX2, but -march=native enables __AVX512F__ so hnswlib.h defines USE_AVX512; the L2Sqr
+    guard also has a latent typo (USE_AVX512 tested twice, USE_AVX not tested) which is harmless here. ===

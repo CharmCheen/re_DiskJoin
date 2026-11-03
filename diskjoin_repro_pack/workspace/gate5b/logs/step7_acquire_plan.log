@@ -1,0 +1,23 @@
+# Gate 5B (new round) deliverable-1 acquisition driver: PLAN-ONLY invocation (metadata probe, no body)
+# date: 2026-11-03T12:54:10+08:00
+
+{
+  "url": "ftp://ftp.irisa.fr/local/texmex/corpus/bigann_base.bvecs.gz",
+  "md5_url": "ftp://ftp.irisa.fr/local/texmex/corpus/MD5SUM",
+  "first_n": 1000000,
+  "dimension": 128,
+  "bvecs_bytes": 132000000,
+  "fbin_bytes": 512000008,
+  "gz_prefix_request_bytes": 134217728,
+  "expected_gz_transfer_bytes": 97941899,
+  "metadata_probe": {
+    "last-modified": "Wed, 16 Jun 2010 20:38:39 GMT",
+    "content-length": "97941899519",
+    "accept-ranges": "bytes",
+    "md5sum_bigann": [
+      "4346fa68813d71e7f3d75d2faba669ec  bigann_base.bvecs.gz"
+    ]
+  },
+  "action": "PLAN ONLY (no dataset body downloaded)"
+}
+rc=0

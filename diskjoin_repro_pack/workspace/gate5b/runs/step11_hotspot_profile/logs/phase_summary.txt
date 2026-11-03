@@ -1,0 +1,64 @@
+Step 11 — coarse phase profile (single fixed-config run, 10% cache, 1 thread)
+==============================================================================
+
+Run: runs/profile_10pct  rc=0  (config == step10 r02_b010: mem_budget 0.0476837158203125,
+     radius 73984, cluster_num 1000, K 24, error_bound 0.1, gt 8379, GATE4B0_WINDOW=2,
+     OMP_NUM_THREADS=1, taskset -c 2, pair/trace output OFF, GATE3_COUNT_ONLY=1)
+
+Counters (must equal step10):
+  dist_comp        10701217792
+  sampled_count    7165
+  pairs            398737742
+  read_calls       4670
+  effective_bytes  2466615808
+  hit              7779
+  miss             4670
+
+Wall-time decomposition (seconds). Sub-slots FIND/READ/PUSH nest inside PRELOAD.
+phase             wall_s       cpu_s  wall_%search  wall-cpu(idle)
+------------------------------------------------------------------
+meta            0.002723    0.002724        0.001%       -0.000001
+graph           0.001604    0.001604        0.001%        0.000000
+taskprep        0.291524    0.291499        0.102%        0.000025
+setup           0.000043    0.000042        0.000%        0.000001
+gorder          0.003107    0.003107        0.001%        0.000000
+join_setup      0.013230    0.013231        0.005%       -0.000001
+preload         8.745921    1.644998        3.058%        7.100923
+compute       276.914351  276.888719       96.832%        0.025632
+result          0.000046    0.000045        0.000%        0.000001
+  find          0.655232    0.656558        0.229%       -0.001326
+  read          7.793996    0.696820        2.725%        7.097176
+  push          0.272903    0.273246        0.095%       -0.000343
+------------------------------------------------------------------
+SUM(excl)     285.972549  278.845969       99.999%
+SEARCH_TOTAL  285.974666  278.847440      100.000%        7.127226
+untimed gap     0.002117    0.001471        0.001%
+
+Full process:
+  build (kmeans)              wall=15.400400 s  (5.11% of process)
+  search (Join)               wall=285.974666 s  (94.89%)
+  process end-to-end          wall=301.375066 s  (elapsed 301.38 s)
+  CPU (user+sys)              cpu=294.25 s  -> 97.6% of wall (1 thread)
+  printed '[X s] Join done'   301.379 s (cumulative: build+search)
+
+Hypothesis tests:
+  (1) distance-dominated      : compute = 276.914 s = 96.83% of search,
+                                91.88% of process wall  -> SUPPORTED
+  (2) cache-mgmt overhead     : find+push = 0.928 s = 0.325% of search -> NOT significant
+  (3) read waiting            : read wall = 7.794 s = 2.73% of search,
+                                of which 7.097 s idle (blocking O_DIRECT) = 2.48% -> measurable but NOT a bottleneck
+
+Ideal end-to-end upper bounds (Amdahl; ignores ALL extra overhead of the accelerator):
+  end-to-end baseline = 301.375 s
+  compute only   x2    ->  162.918 s  (1.85x end-to-end)
+  compute only   x10   ->   52.152 s  (5.78x end-to-end)
+  compute only   inf  ->   24.461 s  (12.32x end-to-end)
+  whole search   x2    ->  158.388 s  (1.90x end-to-end)
+  whole search   x10   ->   43.998 s  (6.85x end-to-end)
+  whole search   inf  ->   15.400 s  (19.57x end-to-end)
+  read wait only x2    ->  297.826 s  (1.01x end-to-end)
+  read wait only x10   ->  294.988 s  (1.02x end-to-end)
+  read wait only inf  ->  294.278 s  (1.02x end-to-end)
+
+These bounds assume the accelerated part's time goes to zero-ish and that NOTHING else
+gets slower; they are NOT a prediction that a GPU yields the same speed-up.

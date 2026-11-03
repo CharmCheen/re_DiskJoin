@@ -1,0 +1,307 @@
+{
+  "manifest": "CPU_BASELINE_MANIFEST",
+  "gate": "Gate 5B",
+  "step": 15,
+  "created_utc": "2026-11-03T10:28:50Z",
+  "purpose": "Frozen CPU baseline for the DiskJoin minimal reproduction: source + patch chain, toolchain, binaries, data, graph, tasks, config, CPU binding, and GT/eval protocol for the original implementation (1-thread), the optimized C path (1-thread), and the optimized C path (4-thread).",
+  "host": {
+    "hostname_role": "amax",
+    "os": "Ubuntu 22.04.5 LTS",
+    "kernel": "6.8.0-40-generic",
+    "arch": "x86_64",
+    "word_bits": 64,
+    "sizeof_size_t": 8,
+    "cpu_model": "Intel(R) Xeon(R) Silver 4310 CPU @ 2.10GHz",
+    "sockets": 1,
+    "physical_cores_per_socket": 12,
+    "threads_per_core": 2,
+    "logical_cpus_online": "0-23",
+    "numa_nodes": 1
+  },
+
+  "frozen_source": {
+    "upstream_reference_sha": "aa86151f97527b1dcf9a032d523c1d67d892454a",
+    "upstream_reference_path": "reference/DiskJoin",
+    "instrumented_copy": "workspace/gate5b/instrumented/DiskJoin",
+    "note": "The instrumented copy carries env-gated, additive experiment gates only; unset gates reproduce the reference behaviour. Patch files (unified diffs) below are the auditable chain.",
+    "patch_chain": [
+      {
+        "step": "baseline instrumented gates (pre-step13)",
+        "file": "patches/clusterio_read_safety.patch",
+        "sha256": "0cffa6f10289f40123cf3b7fb9b0c2a0faf61371021c5895889f52f1fe914461"
+      },
+      {
+        "step": "baseline instrumented gates (pre-step13)",
+        "file": "patches/manifest_refactor.patch",
+        "sha256": "469e10e8eb9b570cf0fef1530317e48a57262ac17af2956217c0712913d14634"
+      },
+      {
+        "step": 13,
+        "file": "runs/step13_c_integration/inputs/DiskJoin_GATE13_C_PATH.patch",
+        "sha256": "775630ea3cb3ca21737f49247a32b72980dbb27a6c5659fa6b5bb51b13075ed2",
+        "source_before_sha256": "0cb06fb9bc1c2866a1f7a23f715f82ba2f858d363469255009c4c975ebc137b3",
+        "source_after_sha256": "17f2b6a04a0f29eb009eb5d39eb5e1367e80111cd3f5726a369b709cb9504aa7"
+      },
+      {
+        "step": 14,
+        "file": "runs/step14_cpu_scaling/inputs/DiskJoin_GATE14_SKIP_BUILD_AND_EXACT.patch",
+        "sha256": "9ccf609da06d0c0fcf300d869a0604858c191798362fa586aa6d29542254a499",
+        "source_before_sha256": "17f2b6a04a0f29eb009eb5d39eb5e1367e80111cd3f5726a369b709cb9504aa7",
+        "source_after_sha256": "ef0705f7d284f2e72c6090b439bf45c50c00f470a3a8c026a78227e7f0edd2b9"
+      },
+      {
+        "step": 15,
+        "file": "runs/step15_cpu_scaling/inputs/DiskJoin_GATE15_PER_THREAD_STREAM.patch",
+        "sha256": "adde629508a83413b47b2f2904180123f09bdfc70fccfaf332bc2db20aaa62c1",
+        "source_before_sha256": "ef0705f7d284f2e72c6090b439bf45c50c00f470a3a8c026a78227e7f0edd2b9",
+        "source_after_sha256": "a9396e2c28bc1c7686a4ca1fd54ec4d5afc88019b3663b66705d03dfdca033a0",
+        "description": "Output-only per-thread streaming pair sink (GATE15_PER_THREAD_STREAM). Writes each compute thread's pairs to GATE3_PAIR_OUT.t<tid>; compute logic (candidates, ordering, pruning, threshold, distance, counters) unchanged."
+      }
+    ],
+    "final_diskjoin_h_sha256": "a9396e2c28bc1c7686a4ca1fd54ec4d5afc88019b3663b66705d03dfdca033a0",
+    "gate13_l2_h_sha256": "9ad25994786c347fee155f0609a494bf869f727035ba139076cc0c6c0ccbeae1"
+  },
+
+  "compiler_and_options": {
+    "compiler": "/usr/bin/c++ (g++ 11.4.0, Ubuntu 11.4.0-1ubuntu1~22.04.3)",
+    "cmake": "3.22.1",
+    "build_type": "Release (CMAKE_BUILD_TYPE=Release; CMakeCache CMAKE_BUILD_TYPE is empty, flags set explicitly)",
+    "openmp": "enabled (-fopenmp); no num_threads clause and no omp_set_num_threads anywhere -> OMP_NUM_THREADS governs both build and compute",
+    "cxx_flags": "-fopenmp -DNDEBUG -mtune=native -mavx2 -pthread -mfma -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp-simd -funroll-loops -DUSE_AVX2 -O3 -DNDEBUG -std=c++11 -march=native -Wall -Wno-unused-variable -Wno-unused-function -Wno-reorder -Wno-write-strings -Wno-sign-compare -Wno-unused-result -DINFO",
+    "simd_kernel": "utils::L2Sqr -> L2SqrSIMD -> L2SqrFloatAVX512 (AVX-512F zmm FMA; 192 zmm instructions in the step14 binary). USE_AVX512 is selected from __AVX512F__ supplied by -march=native.",
+    "note": "dist_l2 is a mutable global function pointer -> indirect, out-of-line call per distance."
+  },
+
+  "binaries": {
+    "original_impl_1thread": {
+      "path": "runs/step7_1m_normal/build/main",
+      "sha256": "7524590efc7dc84c9151a4339d9e3f8864d9984b204de8f8a0990ed227f720f9",
+      "gates": "no C-path gate; original point-point loops"
+    },
+    "optimized_C_1thread_and_build": {
+      "path": "runs/step13_c_integration/build/main",
+      "sha256": "a707e927065c4f500455317fce0326814642934e3a9f62af5144e2b02c6fb45f",
+      "gates": "GATE13_C_PATH=1"
+    },
+    "optimized_C_perf_1_2_4thread": {
+      "path": "runs/step14_cpu_scaling/build/main",
+      "sha256": "632884c7bd6118fb383c0519e5ebc38e592d33d5f53ec76a028c995c6e214698",
+      "gates": "GATE13_C_PATH=1, GATE14_SKIP_BUILD=1, GATE14_EXACT_COUNT=1"
+    },
+    "optimized_C_4thread_correctness": {
+      "path": "runs/step15_cpu_scaling/build/main",
+      "sha256": "d712ec53608ff809e27f22e811a9983fc24dc4809b7399abab9e6b900cc787ef",
+      "gates": "GATE13_C_PATH=1, GATE14_SKIP_BUILD=1, GATE14_EXACT_COUNT=1, GATE15_PER_THREAD_STREAM=1"
+    },
+    "asan_ubsan_100k": {
+      "path": "runs/step13_c_integration/asan_build/main",
+      "sha256": "4b59a0922301450dd1cb1fdacefb1e2a9128f0e4160d39a8cd8e30b8c7ef1811",
+      "gates": "GATE13_C_PATH=1 (100K)"
+    }
+  },
+
+  "data": {
+    "bigann1m": {
+      "path": "workspace/gate5b/acq1m/data/bigann1m.fbin",
+      "size_bytes": 512000008,
+      "n": 1000000,
+      "d": 128,
+      "sha256": "69fb0e488b999c79c0d3919378bb03485fa421434bf9634d385b485a6431eb1e"
+    },
+    "bigann100k": {
+      "path": "workspace/gate5a/data/bigann100k.fbin",
+      "size_bytes": 51200008,
+      "n": 100000,
+      "d": 128,
+      "sha256": "d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1"
+    }
+  },
+
+  "graph": {
+    "bigann1m_fixed": {
+      "dir": "runs/step13_c_integration/graph",
+      "data.clusters_sha256": "8f688ef1edfdd262b48e1af82e1fb6bbb4172fbb81159fa834f93a862fe8e15a",
+      "data.metadata_sha256": "86827ea70cf5d6fa80fc4e014977b27615646a522889862b12e10d7fbc03db5a",
+      "data.hnsw_sha256": "eb0be0ed7dd4be2a4413882350da7aebae71d906b2c72d1f080f753fba632c32",
+      "identity": "byte-identical to the step10 phase2 graph used by step10/step11"
+    },
+    "bigann100k_fixed": {
+      "dir": "runs/step2_100k/normal",
+      "data.clusters_sha256": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914",
+      "data.metadata_sha256": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw_sha256": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63"
+    }
+  },
+
+  "tasks": {
+    "bigann1m_task_order_sha256": "d699f7224491eb82d3935f5652857e8810e929305dc67b65d54c417cf39bfa3d",
+    "bigann1m_task_total": 12449,
+    "bigann100k_task_order_sha256": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+    "note": "Task order is derived from the fixed graph (Gorder); with GATE14_SKIP_BUILD it is identical across thread counts."
+  },
+
+  "config": {
+    "bigann1m": {
+      "data_file": "workspace/gate5b/acq1m/data/bigann1m.fbin",
+      "radius": 73984,
+      "epsilon": "sqrt(radius) = 272.0",
+      "cluster_num": 1000,
+      "K": 24,
+      "mem_budget": 0.0476837158203125,
+      "cache_fraction": "10%",
+      "error_bound": 0.1,
+      "gt": 8379,
+      "GATE4B0_WINDOW": 2
+    },
+    "bigann100k": {
+      "data_file": "workspace/gate5a/data/bigann100k.fbin",
+      "radius": 73984,
+      "cluster_num": 1000,
+      "K": 24,
+      "mem_budget": 0.00476837158203125,
+      "cache_fraction": "10%",
+      "error_bound": 0.1,
+      "gt": 3,
+      "GATE4B0_WINDOW": 2
+    }
+  },
+
+  "cpu_topology_and_binding": {
+    "topology": "24 logical = 12 physical cores x 2 SMT, single socket, single NUMA node (0-23). Physical core K = {K, K+12}.",
+    "binding_sets": {
+      "1_thread": "taskset -c 2",
+      "2_threads": "taskset -c 2,3",
+      "4_threads": "taskset -c 2,3,4,5"
+    },
+    "omp_env": "OMP_PROC_BIND=true OMP_PLACES=cores (OMP_DISPLAY_AFFINITY=TRUE recorded in stderr). Nested physical cores only; no SMT siblings in use.",
+    "sibling_map": {"cpu2": "2,14", "cpu3": "3,15", "cpu4": "4,16", "cpu5": "5,17"}
+  },
+
+  "gt_and_evaluation_protocol": {
+    "sampled_recall": {
+      "formula": "recall = count / config.gt, where `count` is incremented once per hit whose vector id is divisible by 100000 (and once more if the other id is too)",
+      "bigann1m": {"gt": 8379, "sampled_count": 7165, "recall": 0.855114},
+      "bigann100k": {"gt": 3, "sampled_count": 2, "recall": 0.666667},
+      "scope": "SAMPLED recall under this ID-divisibility convention only. It is NOT a full-join recall and is NOT a GT-enumerated recall."
+    },
+    "full_output_consistency": {
+      "method": "exact pair MULTISET equality of the complete emitted pair list. Each pair file is sorted (LC_ALL=C) and the sorted byte stream is hashed (sha256); equality of the full sorted stream + equal N is exact multiset equality (no count/XOR/sum surrogate).",
+      "bigann1m_ref": {"path": "runs/step7_1m_normal/pairs.txt", "sha256_unsorted": "cfb4b9c0be815e52e938464865c51b94cefb29d1affe470dcad60e6d9685e69a", "pairs": 398737742},
+      "bigann1m_ref_sorted_sha256": "863affa82351e61f991d934fb09cb5b80472d4f89c41a5fc258ccc76db29123a",
+      "bigann1m_sink_sorted_sha256": "863affa82351e61f991d934fb09cb5b80472d4f89c41a5fc258ccc76db29123a",
+      "bigann1m_N": 398737742,
+      "bigann1m_U": 398737742,
+      "bigann1m_duplicates": 0,
+      "bigann100k_ref": {"path": "runs/step2_100k/normal/pairs.txt", "sha256_unsorted": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6", "pairs": 3855811},
+      "bigann100k_sorted_sha256": "e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c",
+      "scope": "Complete-output consistency for the fixed config. It establishes that the multiset of emitted pairs is unchanged; it does NOT establish full-join recall and does NOT use GT beyond the count above."
+    }
+  },
+
+  "configurations": [
+    {
+      "id": "A_original_impl_1thread",
+      "impl": "original point-point loops (GATE13_C_PATH unset)",
+      "threads": 1,
+      "binding": "taskset -c 2",
+      "build_included": true,
+      "build_note": "graph/tasks built in-run by this binary",
+      "binary": "runs/step7_1m_normal/build/main",
+      "evidence": ["runs/step7_1m_normal/REPORT.md", "runs/step10_cache_sensitivity/STEP10_CACHE_SENSITIVITY_REPORT.md", "runs/step11_hotspot_profile/STEP11_HOTSPOT_PROFILE_REPORT.md"],
+      "pairs_multiset": "runs/step7_1m_normal/pairs.txt"
+    },
+    {
+      "id": "B_optimized_C_1thread",
+      "impl": "GATE13_C_PATH=1 (blocked fixed-128, register-reuse, inline AVX-512 kernel)",
+      "threads": 1,
+      "binding": "taskset -c 2",
+      "build_included": true,
+      "build_note": "step13 built the graph 1-thread; step13 A-vs-C comparison builds in both",
+      "binary": "runs/step13_c_integration/build/main",
+      "evidence": ["runs/step13_c_integration/STEP13_C_INTEGRATION_REPORT.md"],
+      "pairs_multiset": "runs/step13_c_integration/correctness/pairs.txt (IDENTICAL to step7)"
+    },
+    {
+      "id": "C_optimized_C_4thread",
+      "impl": "GATE13_C_PATH=1",
+      "threads": 4,
+      "binding": "taskset -c 2,3,4,5, OMP_PROC_BIND=true OMP_PLACES=cores",
+      "build_included": false,
+      "build_note": "REUSES the fixed step13 graph/tasks (GATE14_SKIP_BUILD=1) because the build is not deterministic across thread counts; step14 records the build separately",
+      "binaries": ["runs/step14_cpu_scaling/build/main (perf)", "runs/step15_cpu_scaling/build/main (correctness)"],
+      "evidence": ["runs/step14_cpu_scaling/STEP14_CPU_SCALING_REPORT.md", "runs/step14_cpu_scaling/PARALLEL_SAFETY_AUDIT.md", "runs/step15_cpu_scaling/STEP15_REPORT.md"],
+      "pairs_multiset": "runs/step15_cpu_scaling/correctness_1m/t4/pairs.txt.t{0,1,2,3}"
+    }
+  ],
+
+  "comparisons": {
+    "100k_multiset_1_vs_2_vs_4_vs_step2_ref": {
+      "build": "reuse fixed graph (GATE14_SKIP_BUILD)",
+      "result": "identical",
+      "sorted_sha256": "e57f9e5da5b35fc38bc40802c8a26de024a125535706294d54fe61be64ebc54c"
+    },
+    "1m_multiset_4thread_vs_1thread_step7_ref": {
+      "build": "4-thread run reuses fixed graph; step7 reference INCLUDED its own build",
+      "result": "identical",
+      "sorted_sha256": "863affa82351e61f991d934fb09cb5b80472d4f89c41a5fc258ccc76db29123a",
+      "N": 398737742,
+      "U": 398737742,
+      "duplicates": 0
+    },
+    "1m_A_vs_B_byte_identical_pairs": {
+      "build": "both included build (own graphs, byte-identical hashes)",
+      "result": "identical (step13)"
+    },
+    "distance_count_invariant_1_vs_2_vs_4": {
+      "exact_counter_size_t": 14090491387,
+      "result": "invariant across 1/2/4 threads (step14, step15)"
+    }
+  },
+
+  "evidence_scopes": {
+    "sampled_recall": "Sampled only (IDs divisible by 100000), gt convention as above. Separate from full-output consistency.",
+    "full_output_consistency": "Complete pair multiset equality vs the frozen reference for the fixed config. Does not imply GT recall.",
+    "perf_timings": "Wall/CPU phase timings (GATE5B_PROFILE) and /usr/bin/time -v; perf(1) unavailable (perf_event_paranoid=4).",
+    "cpu_scaling": "Step14: compute wall 246.84 -> 123.15 -> 63.47 s (2.004x / 3.889x), search 255.65 -> 131.48 -> 71.76 s. Amdahl-limited by ~8.1 s serial preload. This is a 4-physical-core CPU scaling result, NOT a GPU claim."
+  },
+
+  "verification_status": {
+    "normal_runs": {
+      "step15_1m_4thread_rc": 0,
+      "step15_1m_4thread_error_strings": "none (grep for error/sanitizer/abort/segfault matched only the config key 'error_bound')",
+      "step15_100k_validate_rc": 0,
+      "step14_all_nine_runs_rc": 0,
+      "note": "Exact multiset match and exact-counter invariance are themselves the strongest checks: any logic change would alter the pair multiset."
+    },
+    "sanitizer_runs": {
+      "scope": "step13 (separate from the step15 normal run)",
+      "asan_ubsan_100k_rc": 0,
+      "asan_ubsan_100k_result": "CMP=IDENTICAL to the non-sanitizer 100K output; sanitizer-clean",
+      "evidence": "runs/step13_c_integration/asan_100k/{rc.txt,cmp.txt,stderr.log}",
+      "note": "The 1M step15 run was a normal (non-sanitizer) build; it is NOT an ASan run."
+    }
+  },
+
+  "resource_envelope": {
+    "wall_cap_minutes": 30,
+    "cpus_max": 4,
+    "process_tree_rss_cap_bytes": 2147483648,
+    "new_disk_cap_bytes": 17179869184,
+    "step15_observed": {
+      "1m_run_wall_s": 88.3,
+      "1m_run_peak_rss_kb": 104664,
+      "new_disk_1m_pairs_bytes": 5497538938,
+      "new_disk_total_bytes_approx": 5514000000,
+      "within_caps": true
+    },
+    "note": "The default buffered sink would need 398737742 x 16 B = 6.38 GB RSS (> 2 GiB), which is why the output-only per-thread streaming sink (GATE15) exists."
+  },
+
+  "wording_constraints": [
+    "Step11's 'distance computation dominates' is supported only as a TIME share of the compute phase (96.83% of search); it is not a claim about the distance kernel alone.",
+    "Do not state a 'unique bottleneck' or that 'load balance is proven'. Step14 measured near-linear scaling within 4 physical cores and an Amdahl limit from the serial preload; it did not prove per-thread load balance or sole-bottleneck status.",
+    "Sampled Recall and full-output consistency are separate evidence scopes; neither is a full-join recall.",
+    "Normal-run no-error and sanitizer verification are recorded separately; the 1M run is not a sanitizer run.",
+    "This baseline is CPU-only; no GPU claim is made or implied."
+  ]
+}

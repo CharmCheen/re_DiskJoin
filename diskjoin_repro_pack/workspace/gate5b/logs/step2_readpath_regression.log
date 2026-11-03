@@ -1,0 +1,83 @@
+# Gate 5B Step 2: bounded 100K output-consistency regression (patched read path)
+# date: 2026-11-03T12:36:24+08:00  host: amax
+# patched ClusterIO.h sha256: 66c4f4dc903258ae86f85933befca5d002407d9f2f68477d7c906836ea2baac4
+
+=== pre-run resource state ===
+ 12:36:24 up 144 days, 22:40,  3 users,  load average: 0.43, 0.34, 0.20
+
+               total        used        free      shared  buff/cache   available
+Mem:            62Gi       3.3Gi        42Gi        20Mi        16Gi        58Gi
+
+/dev/sda2       879G   20G  815G   3% /
+
+=== input hashes (gate5a 100K) ===
+cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.bvecs
+d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/data/bigann100k.fbin
+### [cmake_normal] timeout=600s : cmake -S /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin -B /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build_100k_normal -DCMAKE_CXX_FLAGS=
+### [cmake_normal] rc=0
+### [build_normal] timeout=600s : cmake --build /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build_100k_normal --parallel 4
+### [build_normal] rc=0
+### [join_normal] timeout=600s
+### [join_normal] rc=0
+### [cmake_prefetch_off] timeout=600s : cmake -S /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/instrumented/DiskJoin -B /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build_100k_prefetch_off -DCMAKE_CXX_FLAGS=-DGATE5AR_DISABLE_PREFETCH
+### [cmake_prefetch_off] rc=0
+### [build_prefetch_off] timeout=600s : cmake --build /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/build_100k_prefetch_off --parallel 4
+### [build_prefetch_off] rc=0
+### [join_prefetch_off] timeout=600s
+### [join_prefetch_off] rc=0
+
+=== artifact SHA-256: gate5b(normal) vs gate5b(prefetch_off) vs frozen baseline ===
+{
+  "artifacts": {
+    "normal": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    },
+    "prefetch_off": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    },
+    "baseline": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15"
+    }
+  },
+  "checks": {
+    "normal_vs_prefetch_off_identical": true,
+    "baseline_identical": true,
+    "pairs_lines": 3855811,
+    "pairs_unique": 3855811,
+    "pairs_illegal": 0,
+    "pairs_duplicate": 0,
+    "normal_rss_kb": 88044,
+    "prefetch_off_rss_kb": 87972
+  },
+  "failures": [],
+  "PASS": true
+}
+
+=== post-run resource state ===
+ 12:37:10 up 144 days, 22:41,  3 users,  load average: 0.76, 0.45, 0.25
+               total        used        free      shared  buff/cache   available
+Mem:            62Gi       3.6Gi        42Gi        20Mi        16Gi        58Gi
+/dev/sda2       879G   20G  815G   3% /
+
+=== STEP 2 CONCLUSION ===
+Read-path patch (6 tests) PASSES; negative control FAILS on pre-fix header (bug reproduced,
+incl. a destructor free() of an uninitialised buffer).
+Bounded 100K output-consistency regression PASSES: normal == prefetch_off == frozen Gate 5A
+baseline byte-for-byte on knn/tasks/pairs/trace/data.{metadata,hnsw,clusters};
+pairs=3,855,811 unique, 0 illegal, 0 duplicate; RSS ~88 MB (<<4 GiB).
+=> read-path fix is behaviour-preserving on well-formed 100K input. PROCEED to Step 3 prep.

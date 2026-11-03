@@ -1,0 +1,172 @@
+# Gate 5B Step 1: independent re-verification of Gate 5A-R evidence
+# date: 2026-11-03T12:30:07+08:00  host: amax  HEAD: 980bc3956dd2f16f5f521783f7314430262a9966
+
+===== 1.1 server_evidence pack manifest =====
+entries=96 OK=96 FAIL=0 rc=0
+===== 1.2 followup pack manifest =====
+entries=50 OK=50 FAIL=0 rc=0
+===== 1.3 tarball integrity + listed-file hash =====
+4c75c7abe28fad360d9256793edc8757fb02531e55504a6c98d98611c74ff0b0  workspace/gate5ar/evidence/followup_20261103.tar.gz
+183c01ffa43fc82ad4442ccc29985df49011d6fb0bc78d13cce62a64b5185d92  workspace/gate5ar/evidence/server_evidence_20261103.tar.gz
+workspace/gate5ar/evidence/server_evidence_20261103.tar.gz -> gzip OK
+workspace/gate5ar/evidence/followup_20261103.tar.gz -> gzip OK
+
+===== 1.4 three-mode output comparison (raw compare_*.stdout) =====
+--- compare_normal.stdout ---
+{
+  "output_and_bucket_artifacts_identical": true,
+  "sha256": {
+    "normal": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    }
+  },
+  "legacy_baseline_identical": true,
+  "physical_ssd_io": "UNVERIFIED",
+  "performance_effect": "UNVERIFIED: correctness dumps enabled"
+}
+--- compare_asan.stdout ---
+{
+  "output_and_bucket_artifacts_identical": true,
+  "sha256": {
+    "normal": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    },
+    "asan": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    }
+  },
+  "legacy_baseline_identical": true,
+  "physical_ssd_io": "UNVERIFIED",
+  "performance_effect": "UNVERIFIED: correctness dumps enabled"
+}
+--- compare_prefetch_off.stdout ---
+{
+  "output_and_bucket_artifacts_identical": true,
+  "sha256": {
+    "normal": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    },
+    "asan": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    },
+    "prefetch_off": {
+      "knn.txt": "66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459",
+      "tasks.txt": "4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe",
+      "pairs.txt": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+      "trace.txt": "dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15",
+      "data.metadata": "a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146",
+      "data.hnsw": "212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63",
+      "data.clusters": "6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914"
+    }
+  },
+  "legacy_baseline_identical": true,
+  "physical_ssd_io": "UNVERIFIED",
+  "performance_effect": "UNVERIFIED: correctness dumps enabled"
+}
+
+===== 1.5 sanitizer raw-log scan (successful run) =====
+sanitizer/error hits: 2
+asan mode exit:
+workspace/gate5ar/runs/server_run_20261103_1138/asan/time.log:	Exit status: 0
+
+===== 1.6 evaluation.json (raw) key fields =====
+threshold_squared: 73984 | distance_rule: strict squared L2 < threshold
+bootstrap: whole endpoint, including empty GT endpoints 5000 2026110303
+empty_gt_endpoints: 68 | sampled_false_positives: 0 | total_output_pairs: 3855811
+  neighbor_weighted_recall: 0.8172816794719187  CI=[0.7634864114559338, 0.868265631409199]  valid=5000 undef=0 degenerate=False
+  nonempty_endpoint_mean_recall: 0.6675276752768653  CI=[0.6087999205279293, 0.7229044138718212]  valid=5000 undef=0 degenerate=False
+  precision: 1.0  CI=[1.0, 1.0]  valid=5000 undef=0 degenerate=True
+
+===== 1.7 perf raw records =====
+all runs consistent: True
+reference=run1_safe
+run1_safe build=1.68065 join_done=6.40736 rss_kb=14812
+run1_off build=1.66603 join_done=6.9077 rss_kb=14812
+run2_safe build=1.67556 join_done=6.05641 rss_kb=15000
+run2_off build=2.32046 join_done=7.54522 rss_kb=14812
+run3_safe build=2.42249 join_done=6.94633 rss_kb=14808
+run3_off build=1.64925 join_done=6.70906 rss_kb=15008
+
+===== 1.8 current source diff (incl. build-dir init fix) =====
+--- untracked new files under gate5ar ---
+ M diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh
+?? diskjoin_repro_pack/workspace/gate5ar/FOLLOWUP_REPORT.md
+?? diskjoin_repro_pack/workspace/gate5ar/evidence/
+?? diskjoin_repro_pack/workspace/gate5ar/runs/
+?? diskjoin_repro_pack/workspace/gate5ar/scripts/perf_prefetch.sh
+?? diskjoin_repro_pack/workspace/gate5ar/tests/test_build_init.py
+
+===== 1.9 input hashes vs run_linux.sh expected =====
+cd48bfd0f8d8b86a179a36fde4f838ebdffaa79f7f12acbfee28f057acce69c3  workspace/gate5a/data/bigann100k.bvecs
+d967109732b708dd054c2d1289203159ebae88b9bc46004a54961466816e16e1  workspace/gate5a/data/bigann100k.fbin
+
+===== 1.5b CORRECTION: sanitizer strings only in report TEXT, not logs =====
+Actual-log sanitizer hits (excluding *.md): 0
+The 2 raw hits are inside SERVER_REPORT.md prose (self-referential), NOT sanitizer output.
+asan/stderr.log contains only [gate*] lines; hnsw_asan.stderr empty; asan Exit status 0.
+
+===== 1.8b CORRECTION: source diff from repo root =====
+diff --git a/diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh b/diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh
+index ccd13b1..102ea50 100644
+--- a/diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh
++++ b/diskjoin_repro_pack/workspace/gate5ar/scripts/run_linux.sh
+@@ -14,6 +14,10 @@ export PYTHONDONTWRITEBYTECODE=1
+ export OMP_NUM_THREADS=1
+ export ASAN_OPTIONS=detect_leaks=1:halt_on_error=1
+ export UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
++# Scratch dir required by tests/*.py (tempfile.TemporaryDirectory(dir=ROOT/"build")).
++# A fresh checkout lacks it because workspace/**/build/ is gitignored; without it the
++# first `units` step aborts with FileNotFoundError. Same action as run_local.sh line 5.
++mkdir -p "$ROOT/build"
+ # Prior shell instrumentation/ablation settings must not leak into this run.
+ while IFS='=' read -r name value; do
+   case "$name" in GATE3_*|GATE4A_*|GATE4B0_*|GATE4B1_*) unset "$name";; esac
+
+===== 1.10 independent recompute of output artifact SHA-256 =====
+pairs.txt normal=8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6 asan=8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6 off=8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6 all_equal=YES
+knn.txt normal=66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459 asan=66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459 off=66015e11b77ab27bcc837d47c9b018115f39c19ddbb5eb1002771b21e0835459 all_equal=YES
+tasks.txt normal=4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe asan=4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe off=4281c529b01f7212b0f5c015cf1f16955e09a2f8c8e9ef98ac73544af62e85fe all_equal=YES
+trace.txt normal=dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15 asan=dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15 off=dd0811dfcc3d3c5789f7eb1bec7164d617631ec82d32b62cad36480950df4d15 all_equal=YES
+data.metadata normal=a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146 asan=a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146 off=a1fe94def6a4c3896efef388f10a695629dc25ee21fa103033070676f9895146 all_equal=YES
+data.hnsw normal=212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63 asan=212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63 off=212f0a5f68929ec6da768a5136e8d01b4aa2c95e9e56f94e687a59e51a87bf63 all_equal=YES
+data.clusters normal=6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914 asan=6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914 off=6bfbf4ef740862d96b71aea407bda2bd214a3386ef9700c5c2fae63589757914 all_equal=YES
+
+===== 1.11 independent pair legality/uniqueness (normal) =====
+lines=3855811 unique=3855811 illegal=0 duplicate=0
+
+===== STEP 1 CONCLUSION =====
+Both evidence packs verify (96/96, 50/50). Tarballs gzip-OK.
+Three modes byte-identical on every artifact; matches eval.json-pinned pairs hash.
+Pairs: 3,855,811 lines = unique, 0 illegal, 0 duplicate.
+Sanitizer logs clean (0 true hits). Input hashes match run_linux.sh expectations.
+No finding that overturns the Gate 5A-R correctness conclusion. PROCEED to step 2.

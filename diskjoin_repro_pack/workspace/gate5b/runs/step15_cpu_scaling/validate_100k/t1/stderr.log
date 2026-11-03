@@ -1,0 +1,28 @@
+[gate4b0] order=default window=2 window_default=2
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate14-exact] dist_comp_exact=154113486
+[gate15] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/validate_100k/t1/pairs.txt pairs=3855811 threads=1 per_thread_stream=1
+	Command being timed: "timeout 600 /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/build/main /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step15_cpu_scaling/validate_100k/t1/config"
+	User time (seconds): 3.50
+	System time (seconds): 0.18
+	Percent of CPU this job got: 69%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.29
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 18992
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 4714
+	Voluntary context switches: 5195
+	Involuntary context switches: 15
+	Swaps: 0
+	File system inputs: 596864
+	File system outputs: 88712
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

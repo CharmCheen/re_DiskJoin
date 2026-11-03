@@ -1,0 +1,16 @@
+=== asan 100k START 2026-11-03T16:44:52+08:00 ===
+rc=0
+--- sanitizer hits ---
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/stdout.log:0
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/stderr.log:0
+--- counters ---
+recall = 0.666667
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate4a-cache] capacity_slots=28 length=44544 budget_bytes=5120000 filled=28 total=13011 hit=7819 miss=5192 admit=28 evict=3437 reject=1727
+[gate4b1-io] read_calls=5192 effective_bytes=286884352 requested_aligned_bytes=305594368 page_size=4096
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/pairs.txt pairs=3855811 threads=1 streamed=1 bytes=45411278
+--- pairs cmp vs step2 100k normal ---
+8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step13_c_integration/asan_100k/pairs.txt
+8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6  /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step2_100k/normal/pairs.txt
+CMP=IDENTICAL

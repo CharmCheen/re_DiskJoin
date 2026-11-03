@@ -1,0 +1,48 @@
+# Gate 5B (new) streaming verifier validated on 100K full output (independent control)
+# date: 2026-11-03T12:46:56+08:00
+
+=== A. verify normal/ (exact dup via external sort, bounded RAM) ===
+{
+  "total": 3855811,
+  "illegal": 0,
+  "self_joins": 0,
+  "out_of_range": 0,
+  "duplicates": 0,
+  "duplicates_verified": true,
+  "sha256": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+  "endpoints": 201,
+  "sampled_fp": 0
+}
+verify rc=0
+
+=== B. ordered streaming SHA256 compare: normal vs prefetch_off and vs asan ===
+{
+  "mode": "ordered-stream",
+  "equal": true,
+  "left_sha256": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+  "right_sha256": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+  "left_lines": 3855811,
+  "right_lines": 3855811
+}
+compare(normal,prefetch_off) rc=0
+{
+  "mode": "ordered-stream",
+  "equal": true,
+  "left_sha256": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+  "right_sha256": "8d2ed3730b7a7ae29ac14d38b7b2be8ccb604f8029c9d1ef5ea06bdf6e7a30d6",
+  "left_lines": 3855811,
+  "right_lines": 3855811
+}
+compare(normal,asan) rc=0
+
+=== C. bounded set compare vs frozen gate5ar baseline (unordered external sort) ===
+{
+  "mode": "external-sort-set",
+  "equal": true,
+  "sorted_sha256_left": "ac87c8263ba96fa24f5333674e6afbd0523a7aba5abb207fa322a4b6b65b71b0",
+  "sorted_sha256_right": "ac87c8263ba96fa24f5333674e6afbd0523a7aba5abb207fa322a4b6b65b71b0",
+  "left_lines": 3855811,
+  "right_lines": 3855811,
+  "note": "multiset equality via exact external sort; bounded RAM"
+}
+compare(baseline) rc=0

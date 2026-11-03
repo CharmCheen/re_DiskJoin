@@ -1,0 +1,10 @@
+data_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/acq1m/data/bigann1m.fbin
+radius 73984
+cluster_num 1000
+cluster_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.clusters
+metadata_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.metadata
+hnsw_file /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.hnsw
+K 24
+mem_budget 0.0476837158203125
+error_bound 0.1
+gt 8379

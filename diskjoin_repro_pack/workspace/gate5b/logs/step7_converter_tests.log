@@ -1,0 +1,13 @@
+# Gate 5B (new round) bvecs->fbin converter tests (synthetic, no network)
+# date: 2026-11-03T12:52:01+08:00
+
+test_check_rejects_bad_header (tests.test_bvecs_convert.ConvertTests) ... ok
+test_check_rejects_wrong_expected_n (tests.test_bvecs_convert.ConvertTests) ... ok
+test_cli_writes_json (tests.test_bvecs_convert.ConvertTests) ... ok
+test_roundtrip_exact (tests.test_bvecs_convert.ConvertTests) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.067s
+
+OK
+rc=0

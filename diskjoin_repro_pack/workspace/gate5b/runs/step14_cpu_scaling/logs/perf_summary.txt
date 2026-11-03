@@ -1,0 +1,29 @@
+Step 14 — BigANN1M C-path compute-thread scaling (1/2/4 threads)
+Fixed: GATE13_C_PATH=1, radius 73984, cluster_num 1000, K 24, error_bound 0.1, gt 8379,
+GATE4B0_WINDOW=2, 10% cache, GATE14_SKIP_BUILD=1 (fixed verified graph reused),
+pair/trace output OFF (GATE3_COUNT_ONLY). Build time excluded (skipped) — see build_1thread.
+Nested physical core sets {2}/{2,3}/{2,3,4,5}; OMP_PROC_BIND=true; rotation 1/2/4,2/4/1,4/1/2.
+
+run      t   cpu compute_w compute_c search_w search_c preload_w tasks_w elapsed  CPU% rss_MB         exact       dist_f sampled       pairs  eff_GB cacheslots
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+r1_t1    1         248.596   248.576  257.469  250.585     8.406   0.425  257.47    97   86.2   14090491387  10701217792    7165   398737742   2.467         39
+r2_t2    2   2,3   123.214   246.088  131.595  251.622     8.103   0.230  131.60   191   85.9   14090491387  13317079040    7165   398737742   2.467         39
+r3_t4    42,3,4,5    63.733   253.931   71.993  267.418     8.095   0.122   72.00   371   85.9   14090491387  14021633024    7165   398737742   2.467         39
+r4_t2    2   2,3   122.674   245.020  130.964  250.420     8.101   0.161  130.97   191   86.1   14090491387  13317075968    7165   398737742   2.467         39
+r5_t4    42,3,4,5    62.806   250.200   71.102  263.504     8.132   0.120   71.11   370   85.9   14090491387  14021642240    7165   398737742   2.467         39
+r6_t1    1         245.823   245.808  254.630  247.753     8.492   0.290  254.63    97   86.2   14090491387  10701217792    7165   398737742   2.467         39
+r7_t4    42,3,4,5    63.883   254.475   72.175  268.051     8.130   0.121   72.18   371   85.9   14090491387  14016656384    7165   398737742   2.467         39
+r8_t1    1         246.104   246.088  254.847  248.009     8.426   0.291  254.85    97   86.2   14090491387  10701217792    7165   398737742   2.467         39
+r9_t2    2   2,3   123.553   246.755  131.886  252.254     8.057   0.227  131.89   191   85.9   14090491387  13317082112    7165   398737742   2.467         39
+
+Means per thread count (denominator = this round's C single-thread mean):
+ threads  compute_w  search_w  elapsed_w   CPU% speedup_compute eff_compute speedup_search eff_search speedup_proc  eff_proc
+       1    246.841   255.649     255.65                  1.000       1.000          1.000      1.000        1.000     1.000
+       2    123.147   131.482     131.49                  2.004       1.002          1.944      0.972        1.944     0.972
+       4     63.474    71.757      71.76                  3.889       0.972          3.563      0.891        3.562     0.891
+
+Counts (all runs must agree): pairs=398737742 sampled_count=7165; exact distance count must
+be identical across thread counts (float dist_comp is approximate by construction — see audit D2).
+exact_count per run: t1=14090491387, t2=14090491387, t4=14090491387
+pctCPU here is /usr/bin/time process average; not used for efficiency numerators.
+
