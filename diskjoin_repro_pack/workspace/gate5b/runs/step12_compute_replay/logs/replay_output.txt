@@ -1,0 +1,37 @@
+[replay] meta n=1000000 d=128 cluster_num=1000 max_points=2541 length=325248
+[replay] epsilon=272 epsilon*epsilon=73984  threshold compare is STRICT dist < 73984
+[replay] eta: strict< boundary probe counts dist == 73984.0f exactly
+[replay] slot=909 target=912 deg=2 n_target=1060 buffer_bytes=2601984 (slots*1300992)
+[replay] slot=520 target=669 deg=10 n_target=1089 buffer_bytes=13009920 (slots*1300992)
+[replay] slot=90 target=99 deg=20 n_target=1300 buffer_bytes=26019840 (slots*1300992)
+[replay] total real bytes loaded into working buffers = 21006336
+[verify] A ncand=48404888 npass=3004159 count=0 eqbound=142 dxor=0000000001a03da0 pairxor=5850e1aeb9b8e1d8 dsum=7868772100716.000000
+[verify] B ncand=48404888 npass=3004159 count=0 eqbound=142 dxor=0000000001a03da0 pairxor=5850e1aeb9b8e1d8 dsum=7868772100716.000000
+[verify] C ncand=48404888 npass=3004159 count=0 eqbound=142 dxor=0000000001a03da0 pairxor=5850e1aeb9b8e1d8 dsum=7868772100716.000000
+[verify] ALL THREE VERSIONS IDENTICAL (candidates, pass set, pair set, distance bits, boundary)
+[time] pass=0 A wall_s=1.017110 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=0 B wall_s=0.922781 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=0 C wall_s=0.857121 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=1 A wall_s=1.015911 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=1 B wall_s=0.920011 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=1 C wall_s=0.851712 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=2 A wall_s=1.010382 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=2 B wall_s=0.910450 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=2 C wall_s=0.856070 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=3 A wall_s=1.010353 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=3 B wall_s=0.914949 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=3 C wall_s=0.850736 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=4 A wall_s=1.021936 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=4 B wall_s=0.909926 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=4 C wall_s=0.848308 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=5 A wall_s=1.007749 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=5 B wall_s=0.920427 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=5 C wall_s=0.857992 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=6 A wall_s=1.009467 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=6 B wall_s=0.916402 ncand=48404888 npass=3004159 dsum=0.000000
+[time] pass=6 C wall_s=0.851982 ncand=48404888 npass=3004159 dsum=0.000000
+[summary] A mean=1.013273 min=1.007749 median=1.010382 max=1.021936 passes=7
+[summary] B mean=0.916421 min=0.909926 median=0.916402 max=0.922781 passes=7
+[summary] C mean=0.853417 min=0.848308 median=0.851982 max=0.857992 passes=7
+[summary] added buffers for C: 16 x (const float*) + 16 x size_t + 16 x float = 320 bytes (stack), plus 8 held zmm
+[summary] vector reuse: vec1 is fixed across each inner segment; A/B reload both operands every call, C holds vec1's 8 zmm for the whole block

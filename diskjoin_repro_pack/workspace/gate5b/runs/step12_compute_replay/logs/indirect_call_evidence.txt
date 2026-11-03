@@ -1,0 +1,30 @@
+=== Step 12 compute-loop call evidence (compiled artifacts) ===
+date: 2026-11-03T16:32:53+08:00
+
+[real program] runs/step11_hotspot_profile/build/main
+  symbol: DiskJoin::search(ConfigReader) [clone ._omp_fn.1] @ 0x12690  (the OMP compute loop)
+  site 0x12895:
+       12888:	49 0f af ce          	imul   %r14,%rcx
+       1288c:	48 8d 34 8f          	lea    (%rdi,%rcx,4),%rsi
+       12890:	48 8b 7c 24 18       	mov    0x18(%rsp),%rdi
+       12895:	ff 15 7d 67 02 00    	call   *0x2677d(%rip)        # 39018 <dist_l2>
+       1289b:	c5                   	.byte 0xc5
+    -> memory-indirect call through the global function pointer dist_l2 (NOT inlined).
+
+[replay program] runs/step12_compute_replay/build/replay
+  run_A (0x4c00): indirect calls:
+        4cf9:	ff 15 11 73 00 00    	call   *0x7311(%rip)        # c010 <dist_l2>
+        4e65:	ff 15 a5 71 00 00    	call   *0x71a5(%rip)        # c010 <dist_l2>
+  run_B (0x5070): direct call into the AVX-512 kernel (constprop clone, OUT-OF-LINE, not inlined):
+        518c:	e8 ff fd ff ff       	call   4f90 <_ZN5utilsL16L2SqrFloatAVX512EPKvS1_S1_.constprop.0>
+        528b:	e8 00 fd ff ff       	call   4f90 <_ZN5utilsL16L2SqrFloatAVX512EPKvS1_S1_.constprop.0>
+  run_C (0x5540): no calls (kernel inlined, vec1 held in 8 zmm):
+    call count = 0
+
+  kernel symbols:
+0000000000004f90 t utils::L2SqrFloatAVX512(void const*, void const*, void const*) [clone .constprop.0]
+0000000000005370 t utils::L2Sqr(void const*, void const*, void const*)
+
+CONCLUSION: the real hot loop calls through a mutable global function pointer; the compiler emits a
+memory-indirect call and does NOT inline the kernel even for the direct variant (the unrolled AVX-512
+body is large). Operand reuse / register blocking (C) is only achievable by writing the kernel inline.

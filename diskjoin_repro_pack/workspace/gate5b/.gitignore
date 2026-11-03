@@ -1,0 +1,26 @@
+# Gate 5B — keep large generated data / build products out of git.
+# These are reproducible from the acquisition + build scripts and are kept on
+# disk as evidence; GitHub rejects individual files > 100 MB and the totals here
+# are ~14 GB. Only small text/code artifacts are tracked.
+
+# Raw acquired 1M dataset
+acq1m/
+
+# Large per-step run outputs (multi-GB pairs.txt / .clusters)
+runs/step2_100k/
+runs/step7_1m_normal/
+runs/step8_1m_prefetch_off/
+runs/step9_1m_dedup/
+runs/step10_cache_sensitivity/
+runs/step11_hotspot_profile/graph/
+
+# Large binary data files (anywhere under gate5b)
+*.clusters
+*.fbin
+*.bvecs
+*.gzprefix
+pairs.txt
+
+# Build directories (compiled binaries)
+build/
+build_*/

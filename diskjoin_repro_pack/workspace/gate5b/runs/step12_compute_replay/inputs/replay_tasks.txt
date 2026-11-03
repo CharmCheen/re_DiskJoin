@@ -1,0 +1,6 @@
+# selection rule: fixed percentile of exact candidate count cand = C(n_target,2) + n_target*sum(neighbour sizes)
+# metadata=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5b/runs/step11_hotspot_profile/graph/data.metadata
+# label	slot	target	cand	deg	n_target	cross_neighbour_vectors
+small	909	912	1962590	2	1060	1322
+medium	520	669	11578248	10	1089	10088
+large	90	99	34864050	20	1300	26169
