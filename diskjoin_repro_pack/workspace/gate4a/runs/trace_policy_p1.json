@@ -1,0 +1,18 @@
+[
+ {
+  "policy": "belady",
+  "capacity": 62,
+  "accesses": 1484,
+  "hit": 1310,
+  "miss": 174,
+  "miss_rate": 0.11725067385444744
+ },
+ {
+  "policy": "lru",
+  "capacity": 62,
+  "accesses": 1484,
+  "hit": 1183,
+  "miss": 301,
+  "miss_rate": 0.2028301886792453
+ }
+]

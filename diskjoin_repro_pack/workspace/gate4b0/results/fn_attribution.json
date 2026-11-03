@@ -1,0 +1,3325 @@
+{
+ "p1": {
+  "eb0.1": {
+   "eb": "0.1",
+   "gt": 297600,
+   "tp": 190149,
+   "fn": 107451,
+   "fp": 0,
+   "found_outside_coverage": 0,
+   "uncovered_gt_pairs": 0,
+   "coverage_pairs": 1833576,
+   "knn_dup_labels": 0,
+   "tasks_dup_nonhead": 0,
+   "final_edge_count": 1364,
+   "class_counts": {
+    "1": 0,
+    "2": 0,
+    "3": 81701,
+    "4": 25750,
+    "5": 0,
+    "6": 0
+   },
+   "class_frac": {
+    "1": 0.0,
+    "2": 0.0,
+    "3": 0.7603558831467366,
+    "4": 0.23964411685326334,
+    "5": 0.0,
+    "6": 0.0
+   },
+   "class_bucket_pairs": {
+    "1": 0,
+    "2": 0,
+    "3": 3969,
+    "4": 476,
+    "5": 0,
+    "6": 0
+   },
+   "class_bucket_pair_examples": {
+    "1": [],
+    "2": [],
+    "3": [
+     [
+      [
+       41,
+       70
+      ],
+      438
+     ],
+     [
+      [
+       35,
+       117
+      ],
+      280
+     ],
+     [
+      [
+       64,
+       92
+      ],
+      274
+     ],
+     [
+      [
+       34,
+       86
+      ],
+      271
+     ],
+     [
+      [
+       17,
+       35
+      ],
+      268
+     ],
+     [
+      [
+       3,
+       28
+      ],
+      238
+     ],
+     [
+      [
+       100,
+       117
+      ],
+      224
+     ],
+     [
+      [
+       6,
+       34
+      ],
+      222
+     ]
+    ],
+    "4": [
+     [
+      [
+       7,
+       86
+      ],
+      306
+     ],
+     [
+      [
+       86,
+       99
+      ],
+      259
+     ],
+     [
+      [
+       8,
+       64
+      ],
+      255
+     ],
+     [
+      [
+       62,
+       80
+      ],
+      246
+     ],
+     [
+      [
+       6,
+       106
+      ],
+      246
+     ],
+     [
+      [
+       94,
+       108
+      ],
+      245
+     ],
+     [
+      [
+       17,
+       113
+      ],
+      241
+     ],
+     [
+      [
+       6,
+       28
+      ],
+      240
+     ]
+    ],
+    "5": [],
+    "6": []
+   },
+   "samples": {
+    "1": [],
+    "2": [],
+    "3": [
+     {
+      "pair": [
+       1030,
+       1418
+      ],
+      "buckets": [
+       17,
+       41
+      ],
+      "bucket_sizes": [
+       37,
+       44
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2339,
+       3600
+      ],
+      "buckets": [
+       36,
+       69
+      ],
+      "bucket_sizes": [
+       27,
+       40
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       441,
+       1023
+      ],
+      "buckets": [
+       28,
+       4
+      ],
+      "bucket_sizes": [
+       48,
+       37
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "4": [
+     {
+      "pair": [
+       481,
+       3081
+      ],
+      "buckets": [
+       6,
+       82
+      ],
+      "bucket_sizes": [
+       43,
+       25
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.253808,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       678,
+       3595
+      ],
+      "buckets": [
+       95,
+       115
+      ],
+      "bucket_sizes": [
+       43,
+       40
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.249027,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2285,
+       3744
+      ],
+      "buckets": [
+       70,
+       38
+      ],
+      "bucket_sizes": [
+       45,
+       28
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.269166,
+      "edge_in_final_graph": false
+     }
+    ],
+    "5": [],
+    "6": []
+   },
+   "boundary_analysis": {
+    "all_boundary_ties": true,
+    "pairs": [],
+    "note": "no covered FN"
+   }
+  },
+  "eb1.0": {
+   "eb": "1.0",
+   "gt": 297600,
+   "tp": 187769,
+   "fn": 109831,
+   "fp": 0,
+   "found_outside_coverage": 0,
+   "uncovered_gt_pairs": 0,
+   "coverage_pairs": 1773186,
+   "knn_dup_labels": 0,
+   "tasks_dup_nonhead": 0,
+   "final_edge_count": 1315,
+   "class_counts": {
+    "1": 0,
+    "2": 0,
+    "3": 81701,
+    "4": 25750,
+    "5": 2380,
+    "6": 0
+   },
+   "class_frac": {
+    "1": 0.0,
+    "2": 0.0,
+    "3": 0.7438792326392366,
+    "4": 0.23445111125274284,
+    "5": 0.021669656108020505,
+    "6": 0.0
+   },
+   "class_bucket_pairs": {
+    "1": 0,
+    "2": 0,
+    "3": 3969,
+    "4": 476,
+    "5": 48,
+    "6": 0
+   },
+   "class_bucket_pair_examples": {
+    "1": [],
+    "2": [],
+    "3": [
+     [
+      [
+       41,
+       70
+      ],
+      438
+     ],
+     [
+      [
+       35,
+       117
+      ],
+      280
+     ],
+     [
+      [
+       64,
+       92
+      ],
+      274
+     ],
+     [
+      [
+       34,
+       86
+      ],
+      271
+     ],
+     [
+      [
+       17,
+       35
+      ],
+      268
+     ],
+     [
+      [
+       3,
+       28
+      ],
+      238
+     ],
+     [
+      [
+       100,
+       117
+      ],
+      224
+     ],
+     [
+      [
+       6,
+       34
+      ],
+      222
+     ]
+    ],
+    "4": [
+     [
+      [
+       7,
+       86
+      ],
+      306
+     ],
+     [
+      [
+       86,
+       99
+      ],
+      259
+     ],
+     [
+      [
+       8,
+       64
+      ],
+      255
+     ],
+     [
+      [
+       62,
+       80
+      ],
+      246
+     ],
+     [
+      [
+       6,
+       106
+      ],
+      246
+     ],
+     [
+      [
+       94,
+       108
+      ],
+      245
+     ],
+     [
+      [
+       17,
+       113
+      ],
+      241
+     ],
+     [
+      [
+       6,
+       28
+      ],
+      240
+     ]
+    ],
+    "5": [
+     [
+      [
+       34,
+       100
+      ],
+      256
+     ],
+     [
+      [
+       94,
+       114
+      ],
+      206
+     ],
+     [
+      [
+       72,
+       88
+      ],
+      195
+     ],
+     [
+      [
+       2,
+       100
+      ],
+      138
+     ],
+     [
+      [
+       69,
+       113
+      ],
+      116
+     ],
+     [
+      [
+       5,
+       22
+      ],
+      114
+     ],
+     [
+      [
+       54,
+       78
+      ],
+      94
+     ],
+     [
+      [
+       106,
+       114
+      ],
+      88
+     ]
+    ],
+    "6": []
+   },
+   "samples": {
+    "1": [],
+    "2": [],
+    "3": [
+     {
+      "pair": [
+       1030,
+       1418
+      ],
+      "buckets": [
+       17,
+       41
+      ],
+      "bucket_sizes": [
+       37,
+       44
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2339,
+       3600
+      ],
+      "buckets": [
+       36,
+       69
+      ],
+      "bucket_sizes": [
+       27,
+       40
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       441,
+       1023
+      ],
+      "buckets": [
+       28,
+       4
+      ],
+      "bucket_sizes": [
+       48,
+       37
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "4": [
+     {
+      "pair": [
+       481,
+       3081
+      ],
+      "buckets": [
+       6,
+       82
+      ],
+      "bucket_sizes": [
+       43,
+       25
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.253808,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       678,
+       3595
+      ],
+      "buckets": [
+       95,
+       115
+      ],
+      "bucket_sizes": [
+       43,
+       40
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.249027,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2285,
+       3744
+      ],
+      "buckets": [
+       70,
+       38
+      ],
+      "bucket_sizes": [
+       45,
+       28
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.269166,
+      "edge_in_final_graph": false
+     }
+    ],
+    "5": [
+     {
+      "pair": [
+       450,
+       3313
+      ],
+      "buckets": [
+       34,
+       100
+      ],
+      "bucket_sizes": [
+       44,
+       52
+      ],
+      "cand_fwd_dist_half": 0.258194,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       703,
+       2930
+      ],
+      "buckets": [
+       100,
+       34
+      ],
+      "bucket_sizes": [
+       52,
+       44
+      ],
+      "cand_fwd_dist_half": 0.258194,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       31,
+       2308
+      ],
+      "buckets": [
+       48,
+       29
+      ],
+      "bucket_sizes": [
+       48,
+       33
+      ],
+      "cand_fwd_dist_half": 0.28205,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "6": []
+   },
+   "boundary_analysis": {
+    "all_boundary_ties": true,
+    "pairs": [],
+    "note": "no covered FN"
+   }
+  },
+  "incremental": {
+   "fn_eb0.1": 107451,
+   "fn_eb1.0": 109831,
+   "incremental_fn": 2380,
+   "recovered_fn": 0,
+   "edges_eb0.1": 1364,
+   "edges_eb1.0": 1315,
+   "dropped_edges": 49,
+   "added_edges": 0,
+   "incremental_on_dropped_edges": 2380,
+   "incremental_not_on_dropped": 0,
+   "not_on_dropped_examples": [],
+   "dropped_edge_list": [
+    [
+     0,
+     74
+    ],
+    [
+     1,
+     65
+    ],
+    [
+     2,
+     100
+    ],
+    [
+     4,
+     43
+    ],
+    [
+     5,
+     22
+    ],
+    [
+     8,
+     66
+    ],
+    [
+     10,
+     76
+    ],
+    [
+     11,
+     33
+    ],
+    [
+     12,
+     43
+    ],
+    [
+     13,
+     80
+    ],
+    [
+     14,
+     25
+    ],
+    [
+     15,
+     105
+    ],
+    [
+     16,
+     93
+    ],
+    [
+     17,
+     90
+    ],
+    [
+     18,
+     37
+    ],
+    [
+     19,
+     67
+    ],
+    [
+     20,
+     23
+    ],
+    [
+     22,
+     59
+    ],
+    [
+     23,
+     25
+    ],
+    [
+     25,
+     105
+    ],
+    [
+     26,
+     70
+    ],
+    [
+     29,
+     48
+    ],
+    [
+     30,
+     88
+    ],
+    [
+     31,
+     82
+    ],
+    [
+     32,
+     81
+    ],
+    [
+     33,
+     64
+    ],
+    [
+     34,
+     100
+    ],
+    [
+     35,
+     99
+    ],
+    [
+     36,
+     72
+    ],
+    [
+     37,
+     60
+    ],
+    [
+     38,
+     78
+    ],
+    [
+     39,
+     69
+    ],
+    [
+     41,
+     50
+    ],
+    [
+     42,
+     119
+    ],
+    [
+     43,
+     106
+    ],
+    [
+     44,
+     86
+    ],
+    [
+     45,
+     114
+    ],
+    [
+     47,
+     67
+    ],
+    [
+     52,
+     81
+    ],
+    [
+     53,
+     84
+    ],
+    [
+     54,
+     78
+    ],
+    [
+     60,
+     81
+    ],
+    [
+     66,
+     86
+    ],
+    [
+     69,
+     113
+    ],
+    [
+     70,
+     86
+    ],
+    [
+     72,
+     88
+    ],
+    [
+     84,
+     89
+    ],
+    [
+     94,
+     114
+    ],
+    [
+     106,
+     114
+    ]
+   ],
+   "gt_pairs_per_dropped_edge_top": [
+    [
+     "34->100",
+     256
+    ],
+    [
+     "94->114",
+     206
+    ],
+    [
+     "72->88",
+     195
+    ],
+    [
+     "2->100",
+     138
+    ],
+    [
+     "69->113",
+     116
+    ],
+    [
+     "5->22",
+     114
+    ],
+    [
+     "54->78",
+     94
+    ],
+    [
+     "106->114",
+     88
+    ],
+    [
+     "70->86",
+     85
+    ],
+    [
+     "22->59",
+     69
+    ]
+   ]
+  }
+ },
+ "p3": {
+  "eb0.1": {
+   "eb": "0.1",
+   "gt": 68029,
+   "tp": 59151,
+   "fn": 8878,
+   "fp": 0,
+   "found_outside_coverage": 0,
+   "uncovered_gt_pairs": 32,
+   "coverage_pairs": 3274616,
+   "knn_dup_labels": 0,
+   "tasks_dup_nonhead": 0,
+   "final_edge_count": 1565,
+   "class_counts": {
+    "1": 17,
+    "2": 15,
+    "3": 5543,
+    "4": 3301,
+    "5": 2,
+    "6": 0
+   },
+   "class_frac": {
+    "1": 0.0019148456859653074,
+    "2": 0.0016895697229105655,
+    "3": 0.6243523316062176,
+    "4": 0.37181797702185176,
+    "5": 0.00022527596305474206,
+    "6": 0.0
+   },
+   "class_bucket_pairs": {
+    "1": 16,
+    "2": 15,
+    "3": 919,
+    "4": 206,
+    "5": 2,
+    "6": 0
+   },
+   "class_bucket_pair_examples": {
+    "1": [
+     [
+      [
+       99,
+       99
+      ],
+      2
+     ],
+     [
+      [
+       79,
+       79
+      ],
+      1
+     ],
+     [
+      [
+       94,
+       94
+      ],
+      1
+     ],
+     [
+      [
+       51,
+       51
+      ],
+      1
+     ],
+     [
+      [
+       39,
+       39
+      ],
+      1
+     ],
+     [
+      [
+       49,
+       49
+      ],
+      1
+     ],
+     [
+      [
+       98,
+       98
+      ],
+      1
+     ],
+     [
+      [
+       113,
+       113
+      ],
+      1
+     ]
+    ],
+    "2": [
+     [
+      [
+       51,
+       83
+      ],
+      1
+     ],
+     [
+      [
+       114,
+       115
+      ],
+      1
+     ],
+     [
+      [
+       111,
+       112
+      ],
+      1
+     ],
+     [
+      [
+       97,
+       114
+      ],
+      1
+     ],
+     [
+      [
+       22,
+       33
+      ],
+      1
+     ],
+     [
+      [
+       106,
+       107
+      ],
+      1
+     ],
+     [
+      [
+       41,
+       99
+      ],
+      1
+     ],
+     [
+      [
+       86,
+       96
+      ],
+      1
+     ]
+    ],
+    "3": [
+     [
+      [
+       86,
+       109
+      ],
+      166
+     ],
+     [
+      [
+       86,
+       116
+      ],
+      160
+     ],
+     [
+      [
+       86,
+       98
+      ],
+      148
+     ],
+     [
+      [
+       90,
+       92
+      ],
+      119
+     ],
+     [
+      [
+       96,
+       109
+      ],
+      112
+     ],
+     [
+      [
+       101,
+       109
+      ],
+      99
+     ],
+     [
+      [
+       93,
+       102
+      ],
+      91
+     ],
+     [
+      [
+       42,
+       104
+      ],
+      90
+     ]
+    ],
+    "4": [
+     [
+      [
+       93,
+       104
+      ],
+      489
+     ],
+     [
+      [
+       93,
+       112
+      ],
+      233
+     ],
+     [
+      [
+       104,
+       113
+      ],
+      189
+     ],
+     [
+      [
+       109,
+       116
+      ],
+      178
+     ],
+     [
+      [
+       114,
+       116
+      ],
+      146
+     ],
+     [
+      [
+       104,
+       116
+      ],
+      145
+     ],
+     [
+      [
+       110,
+       117
+      ],
+      140
+     ],
+     [
+      [
+       86,
+       113
+      ],
+      129
+     ]
+    ],
+    "5": [
+     [
+      [
+       24,
+       91
+      ],
+      1
+     ],
+     [
+      [
+       57,
+       113
+      ],
+      1
+     ]
+    ],
+    "6": []
+   },
+   "samples": {
+    "1": [
+     {
+      "pair": [
+       2658,
+       2691
+      ],
+      "buckets": [
+       79,
+       79
+      ],
+      "bucket_sizes": [
+       31,
+       31
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1409,
+       1501
+      ],
+      "buckets": [
+       94,
+       94
+      ],
+      "bucket_sizes": [
+       33,
+       33
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1521,
+       1524
+      ],
+      "buckets": [
+       51,
+       51
+      ],
+      "bucket_sizes": [
+       28,
+       28
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     }
+    ],
+    "2": [
+     {
+      "pair": [
+       1692,
+       1715
+      ],
+      "buckets": [
+       83,
+       51
+      ],
+      "bucket_sizes": [
+       30,
+       28
+      ],
+      "cand_fwd_dist_half": 0.321861,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": true
+     },
+     {
+      "pair": [
+       3788,
+       3801
+      ],
+      "buckets": [
+       115,
+       114
+      ],
+      "bucket_sizes": [
+       91,
+       108
+      ],
+      "cand_fwd_dist_half": 0.101145,
+      "cand_rev_dist_half": 0.101145,
+      "edge_in_final_graph": true
+     },
+     {
+      "pair": [
+       3727,
+       3744
+      ],
+      "buckets": [
+       111,
+       112
+      ],
+      "bucket_sizes": [
+       25,
+       32
+      ],
+      "cand_fwd_dist_half": 0.243769,
+      "cand_rev_dist_half": 0.243769,
+      "edge_in_final_graph": true
+     }
+    ],
+    "3": [
+     {
+      "pair": [
+       3965,
+       3991
+      ],
+      "buckets": [
+       86,
+       109
+      ],
+      "bucket_sizes": [
+       98,
+       95
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2812,
+       3783
+      ],
+      "buckets": [
+       45,
+       114
+      ],
+      "bucket_sizes": [
+       59,
+       108
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       34,
+       147
+      ],
+      "buckets": [
+       109,
+       22
+      ],
+      "bucket_sizes": [
+       95,
+       39
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "4": [
+     {
+      "pair": [
+       3054,
+       3545
+      ],
+      "buckets": [
+       113,
+       104
+      ],
+      "bucket_sizes": [
+       51,
+       89
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.326568,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       3527,
+       3765
+      ],
+      "buckets": [
+       104,
+       113
+      ],
+      "bucket_sizes": [
+       89,
+       51
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.326568,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       3420,
+       3639
+      ],
+      "buckets": [
+       106,
+       93
+      ],
+      "bucket_sizes": [
+       44,
+       92
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.275526,
+      "edge_in_final_graph": false
+     }
+    ],
+    "5": [
+     {
+      "pair": [
+       2453,
+       2459
+      ],
+      "buckets": [
+       91,
+       24
+      ],
+      "bucket_sizes": [
+       14,
+       3
+      ],
+      "cand_fwd_dist_half": 0.466154,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1789,
+       1811
+      ],
+      "buckets": [
+       113,
+       57
+      ],
+      "bucket_sizes": [
+       51,
+       6
+      ],
+      "cand_fwd_dist_half": 0.46035,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "6": []
+   },
+   "boundary_analysis": {
+    "threshold_f32": 0.19999998807907104,
+    "tol": 0.0001,
+    "pairs": [
+     {
+      "pair": [
+       2658,
+       2691
+      ],
+      "dist2_double": 0.19999999688802497,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.555987519386015e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1409,
+       1501
+      ],
+      "dist2_double": 0.1999999924298024,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.785098803832376e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1521,
+       1524
+      ],
+      "dist2_double": 0.19999999617542108,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.9122894656664613e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1382,
+       1486
+      ],
+      "dist2_double": 0.19999999456290318,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.7185484141600824e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1602,
+       1625
+      ],
+      "dist2_double": 0.19999999748467862,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.2576606978065286e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3278,
+       3288
+      ],
+      "dist2_double": 0.19999999892041018,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.39794917098213e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3779,
+       3784
+      ],
+      "dist2_double": 0.1999999970914689,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.4542655552007844e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1102,
+       1191
+      ],
+      "dist2_double": 0.19999999832217039,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.389148126175527e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2508,
+       2549
+      ],
+      "dist2_double": 0.1999999957384783,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.1307608594201e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3654,
+       3658
+      ],
+      "dist2_double": 0.19999999947579178,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.6210411618876606e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3248,
+       3256
+      ],
+      "dist2_double": 0.19999999217773512,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.9111324456886365e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       902,
+       1014
+      ],
+      "dist2_double": 0.19999999282631237,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.58684382195662e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1747,
+       1757
+      ],
+      "dist2_double": 0.19999998772515676,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 6.137421626473127e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       825,
+       1097
+      ],
+      "dist2_double": 0.19999999792138698,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.0393065158487147e-08,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       2665,
+       2668
+      ],
+      "dist2_double": 0.19999999803464635,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 9.826768287979348e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       60,
+       172
+      ],
+      "dist2_double": 0.199999993955387,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.0223065022871864e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       818,
+       1197
+      ],
+      "dist2_double": 0.19999998910225655,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.448871728819249e-08,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       1692,
+       1715
+      ],
+      "dist2_double": 0.19999999552667258,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.236663715349252e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3788,
+       3801
+      ],
+      "dist2_double": 0.19999999824814704,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.759264841229353e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3727,
+       3744
+      ],
+      "dist2_double": 0.19999999290924808,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.545375965030573e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3196,
+       3209
+      ],
+      "dist2_double": 0.19999999385094114,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.074529436597473e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       802,
+       926
+      ],
+      "dist2_double": 0.19999999696005324,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.5199733832682583e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3456,
+       3481
+      ],
+      "dist2_double": 0.19999999476358793,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.6182060408608265e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2343,
+       2377
+      ],
+      "dist2_double": 0.1999999970834634,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.4582683116604045e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2603,
+       2619
+      ],
+      "dist2_double": 0.19999999883333638,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.833318134085275e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2576,
+       2582
+      ],
+      "dist2_double": 0.1999999960338903,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.983054859211464e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       26,
+       695
+      ],
+      "dist2_double": 0.199999995100337,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.449831504325317e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1451,
+       1458
+      ],
+      "dist2_double": 0.19999999909410154,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.529492336757812e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       76,
+       123
+      ],
+      "dist2_double": 0.19999999911259092,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.437045453276056e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3573,
+       3576
+      ],
+      "dist2_double": 0.1999999982390952,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.804524054273344e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       896,
+       1038
+      ],
+      "dist2_double": 0.19999999906753194,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.662340374883556e-09,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       3905,
+       3909
+      ],
+      "dist2_double": 0.1999999926800892,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.6599554081861996e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     }
+    ],
+    "all_boundary_ties": true
+   }
+  },
+  "eb1.0": {
+   "eb": "1.0",
+   "gt": 68029,
+   "tp": 58366,
+   "fn": 9663,
+   "fp": 0,
+   "found_outside_coverage": 0,
+   "uncovered_gt_pairs": 32,
+   "coverage_pairs": 3153834,
+   "knn_dup_labels": 0,
+   "tasks_dup_nonhead": 0,
+   "final_edge_count": 1474,
+   "class_counts": {
+    "1": 17,
+    "2": 15,
+    "3": 5543,
+    "4": 3301,
+    "5": 787,
+    "6": 0
+   },
+   "class_frac": {
+    "1": 0.0017592880057953016,
+    "2": 0.001552312946289972,
+    "3": 0.573631377419021,
+    "4": 0.34161233571354654,
+    "5": 0.0814446859153472,
+    "6": 0.0
+   },
+   "class_bucket_pairs": {
+    "1": 16,
+    "2": 15,
+    "3": 919,
+    "4": 206,
+    "5": 39,
+    "6": 0
+   },
+   "class_bucket_pair_examples": {
+    "1": [
+     [
+      [
+       99,
+       99
+      ],
+      2
+     ],
+     [
+      [
+       79,
+       79
+      ],
+      1
+     ],
+     [
+      [
+       94,
+       94
+      ],
+      1
+     ],
+     [
+      [
+       51,
+       51
+      ],
+      1
+     ],
+     [
+      [
+       39,
+       39
+      ],
+      1
+     ],
+     [
+      [
+       49,
+       49
+      ],
+      1
+     ],
+     [
+      [
+       98,
+       98
+      ],
+      1
+     ],
+     [
+      [
+       113,
+       113
+      ],
+      1
+     ]
+    ],
+    "2": [
+     [
+      [
+       51,
+       83
+      ],
+      1
+     ],
+     [
+      [
+       114,
+       115
+      ],
+      1
+     ],
+     [
+      [
+       111,
+       112
+      ],
+      1
+     ],
+     [
+      [
+       97,
+       114
+      ],
+      1
+     ],
+     [
+      [
+       22,
+       33
+      ],
+      1
+     ],
+     [
+      [
+       106,
+       107
+      ],
+      1
+     ],
+     [
+      [
+       41,
+       99
+      ],
+      1
+     ],
+     [
+      [
+       86,
+       96
+      ],
+      1
+     ]
+    ],
+    "3": [
+     [
+      [
+       86,
+       109
+      ],
+      166
+     ],
+     [
+      [
+       86,
+       116
+      ],
+      160
+     ],
+     [
+      [
+       86,
+       98
+      ],
+      148
+     ],
+     [
+      [
+       90,
+       92
+      ],
+      119
+     ],
+     [
+      [
+       96,
+       109
+      ],
+      112
+     ],
+     [
+      [
+       101,
+       109
+      ],
+      99
+     ],
+     [
+      [
+       93,
+       102
+      ],
+      91
+     ],
+     [
+      [
+       42,
+       104
+      ],
+      90
+     ]
+    ],
+    "4": [
+     [
+      [
+       93,
+       104
+      ],
+      489
+     ],
+     [
+      [
+       93,
+       112
+      ],
+      233
+     ],
+     [
+      [
+       104,
+       113
+      ],
+      189
+     ],
+     [
+      [
+       109,
+       116
+      ],
+      178
+     ],
+     [
+      [
+       114,
+       116
+      ],
+      146
+     ],
+     [
+      [
+       104,
+       116
+      ],
+      145
+     ],
+     [
+      [
+       110,
+       117
+      ],
+      140
+     ],
+     [
+      [
+       86,
+       113
+      ],
+      129
+     ]
+    ],
+    "5": [
+     [
+      [
+       110,
+       116
+      ],
+      283
+     ],
+     [
+      [
+       90,
+       112
+      ],
+      145
+     ],
+     [
+      [
+       92,
+       108
+      ],
+      99
+     ],
+     [
+      [
+       93,
+       108
+      ],
+      54
+     ],
+     [
+      [
+       96,
+       112
+      ],
+      39
+     ],
+     [
+      [
+       88,
+       104
+      ],
+      22
+     ],
+     [
+      [
+       14,
+       106
+      ],
+      13
+     ],
+     [
+      [
+       87,
+       104
+      ],
+      13
+     ]
+    ],
+    "6": []
+   },
+   "samples": {
+    "1": [
+     {
+      "pair": [
+       2658,
+       2691
+      ],
+      "buckets": [
+       79,
+       79
+      ],
+      "bucket_sizes": [
+       31,
+       31
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1409,
+       1501
+      ],
+      "buckets": [
+       94,
+       94
+      ],
+      "bucket_sizes": [
+       33,
+       33
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1521,
+       1524
+      ],
+      "buckets": [
+       51,
+       51
+      ],
+      "bucket_sizes": [
+       28,
+       28
+      ],
+      "cand_fwd_dist_half": 0.0,
+      "cand_rev_dist_half": 0.0,
+      "edge_in_final_graph": false
+     }
+    ],
+    "2": [
+     {
+      "pair": [
+       1692,
+       1715
+      ],
+      "buckets": [
+       83,
+       51
+      ],
+      "bucket_sizes": [
+       30,
+       28
+      ],
+      "cand_fwd_dist_half": 0.321861,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": true
+     },
+     {
+      "pair": [
+       3788,
+       3801
+      ],
+      "buckets": [
+       115,
+       114
+      ],
+      "bucket_sizes": [
+       91,
+       108
+      ],
+      "cand_fwd_dist_half": 0.101145,
+      "cand_rev_dist_half": 0.101145,
+      "edge_in_final_graph": true
+     },
+     {
+      "pair": [
+       3727,
+       3744
+      ],
+      "buckets": [
+       111,
+       112
+      ],
+      "bucket_sizes": [
+       25,
+       32
+      ],
+      "cand_fwd_dist_half": 0.243769,
+      "cand_rev_dist_half": 0.243769,
+      "edge_in_final_graph": true
+     }
+    ],
+    "3": [
+     {
+      "pair": [
+       3965,
+       3991
+      ],
+      "buckets": [
+       86,
+       109
+      ],
+      "bucket_sizes": [
+       98,
+       95
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       2812,
+       3783
+      ],
+      "buckets": [
+       45,
+       114
+      ],
+      "bucket_sizes": [
+       59,
+       108
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       34,
+       147
+      ],
+      "buckets": [
+       109,
+       22
+      ],
+      "bucket_sizes": [
+       95,
+       39
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     }
+    ],
+    "4": [
+     {
+      "pair": [
+       3054,
+       3545
+      ],
+      "buckets": [
+       113,
+       104
+      ],
+      "bucket_sizes": [
+       51,
+       89
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.326568,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       3527,
+       3765
+      ],
+      "buckets": [
+       104,
+       113
+      ],
+      "bucket_sizes": [
+       89,
+       51
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.326568,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       3420,
+       3639
+      ],
+      "buckets": [
+       106,
+       93
+      ],
+      "bucket_sizes": [
+       44,
+       92
+      ],
+      "cand_fwd_dist_half": null,
+      "cand_rev_dist_half": 0.275526,
+      "edge_in_final_graph": false
+     }
+    ],
+    "5": [
+     {
+      "pair": [
+       2667,
+       3136
+      ],
+      "buckets": [
+       108,
+       92
+      ],
+      "bucket_sizes": [
+       92,
+       64
+      ],
+      "cand_fwd_dist_half": 0.299979,
+      "cand_rev_dist_half": null,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       3840,
+       3996
+      ],
+      "buckets": [
+       116,
+       110
+      ],
+      "bucket_sizes": [
+       63,
+       95
+      ],
+      "cand_fwd_dist_half": 0.27021,
+      "cand_rev_dist_half": 0.27021,
+      "edge_in_final_graph": false
+     },
+     {
+      "pair": [
+       1179,
+       3998
+      ],
+      "buckets": [
+       116,
+       110
+      ],
+      "bucket_sizes": [
+       63,
+       95
+      ],
+      "cand_fwd_dist_half": 0.27021,
+      "cand_rev_dist_half": 0.27021,
+      "edge_in_final_graph": false
+     }
+    ],
+    "6": []
+   },
+   "boundary_analysis": {
+    "threshold_f32": 0.19999998807907104,
+    "tol": 0.0001,
+    "pairs": [
+     {
+      "pair": [
+       2658,
+       2691
+      ],
+      "dist2_double": 0.19999999688802497,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.555987519386015e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1409,
+       1501
+      ],
+      "dist2_double": 0.1999999924298024,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.785098803832376e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1521,
+       1524
+      ],
+      "dist2_double": 0.19999999617542108,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.9122894656664613e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1382,
+       1486
+      ],
+      "dist2_double": 0.19999999456290318,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.7185484141600824e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1602,
+       1625
+      ],
+      "dist2_double": 0.19999999748467862,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.2576606978065286e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3278,
+       3288
+      ],
+      "dist2_double": 0.19999999892041018,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.39794917098213e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3779,
+       3784
+      ],
+      "dist2_double": 0.1999999970914689,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.4542655552007844e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1102,
+       1191
+      ],
+      "dist2_double": 0.19999999832217039,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.389148126175527e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2508,
+       2549
+      ],
+      "dist2_double": 0.1999999957384783,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.1307608594201e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3654,
+       3658
+      ],
+      "dist2_double": 0.19999999947579178,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.6210411618876606e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3248,
+       3256
+      ],
+      "dist2_double": 0.19999999217773512,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.9111324456886365e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       902,
+       1014
+      ],
+      "dist2_double": 0.19999999282631237,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.58684382195662e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1747,
+       1757
+      ],
+      "dist2_double": 0.19999998772515676,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 6.137421626473127e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       825,
+       1097
+      ],
+      "dist2_double": 0.19999999792138698,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.0393065158487147e-08,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       2665,
+       2668
+      ],
+      "dist2_double": 0.19999999803464635,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 9.826768287979348e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       60,
+       172
+      ],
+      "dist2_double": 0.199999993955387,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.0223065022871864e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       818,
+       1197
+      ],
+      "dist2_double": 0.19999998910225655,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.448871728819249e-08,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       1692,
+       1715
+      ],
+      "dist2_double": 0.19999999552667258,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.236663715349252e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3788,
+       3801
+      ],
+      "dist2_double": 0.19999999824814704,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.759264841229353e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3727,
+       3744
+      ],
+      "dist2_double": 0.19999999290924808,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.545375965030573e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3196,
+       3209
+      ],
+      "dist2_double": 0.19999999385094114,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.074529436597473e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       802,
+       926
+      ],
+      "dist2_double": 0.19999999696005324,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.5199733832682583e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3456,
+       3481
+      ],
+      "dist2_double": 0.19999999476358793,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.6182060408608265e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2343,
+       2377
+      ],
+      "dist2_double": 0.1999999970834634,
+      "dist2_f32sim": 0.20000001788139343,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.4582683116604045e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2603,
+       2619
+      ],
+      "dist2_double": 0.19999999883333638,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 5.833318134085275e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       2576,
+       2582
+      ],
+      "dist2_double": 0.1999999960338903,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 1.983054859211464e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       26,
+       695
+      ],
+      "dist2_double": 0.199999995100337,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 2.449831504325317e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       1451,
+       1458
+      ],
+      "dist2_double": 0.19999999909410154,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.529492336757812e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       76,
+       123
+      ],
+      "dist2_double": 0.19999999911259092,
+      "dist2_f32sim": 0.19999998807907104,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.437045453276056e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       3573,
+       3576
+      ],
+      "dist2_double": 0.1999999982390952,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 8.804524054273344e-09,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     },
+     {
+      "pair": [
+       896,
+       1038
+      ],
+      "dist2_double": 0.19999999906753194,
+      "dist2_f32sim": 0.19999997317790985,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 4.662340374883556e-09,
+      "oracle_in": true,
+      "f32sim_rejects": false
+     },
+     {
+      "pair": [
+       3905,
+       3909
+      ],
+      "dist2_double": 0.1999999926800892,
+      "dist2_f32sim": 0.20000000298023224,
+      "thr_double": 0.2,
+      "thr_f32": 0.19999998807907104,
+      "rel_dev_from_boundary": 3.6599554081861996e-08,
+      "oracle_in": true,
+      "f32sim_rejects": true
+     }
+    ],
+    "all_boundary_ties": true
+   }
+  },
+  "incremental": {
+   "fn_eb0.1": 8878,
+   "fn_eb1.0": 9663,
+   "incremental_fn": 785,
+   "recovered_fn": 0,
+   "edges_eb0.1": 1565,
+   "edges_eb1.0": 1474,
+   "dropped_edges": 91,
+   "added_edges": 0,
+   "incremental_on_dropped_edges": 785,
+   "incremental_not_on_dropped": 0,
+   "not_on_dropped_examples": [],
+   "dropped_edge_list": [
+    [
+     0,
+     69
+    ],
+    [
+     1,
+     78
+    ],
+    [
+     1,
+     106
+    ],
+    [
+     2,
+     95
+    ],
+    [
+     3,
+     11
+    ],
+    [
+     4,
+     8
+    ],
+    [
+     4,
+     14
+    ],
+    [
+     5,
+     20
+    ],
+    [
+     6,
+     52
+    ],
+    [
+     6,
+     90
+    ],
+    [
+     7,
+     10
+    ],
+    [
+     11,
+     19
+    ],
+    [
+     12,
+     107
+    ],
+    [
+     13,
+     90
+    ],
+    [
+     14,
+     106
+    ],
+    [
+     15,
+     102
+    ],
+    [
+     16,
+     61
+    ],
+    [
+     17,
+     64
+    ],
+    [
+     18,
+     115
+    ],
+    [
+     19,
+     23
+    ],
+    [
+     20,
+     36
+    ],
+    [
+     21,
+     76
+    ],
+    [
+     22,
+     72
+    ],
+    [
+     23,
+     63
+    ],
+    [
+     26,
+     28
+    ],
+    [
+     28,
+     33
+    ],
+    [
+     30,
+     116
+    ],
+    [
+     32,
+     92
+    ],
+    [
+     32,
+     104
+    ],
+    [
+     34,
+     35
+    ],
+    [
+     34,
+     48
+    ],
+    [
+     34,
+     80
+    ],
+    [
+     36,
+     108
+    ],
+    [
+     37,
+     96
+    ],
+    [
+     37,
+     112
+    ],
+    [
+     38,
+     108
+    ],
+    [
+     39,
+     115
+    ],
+    [
+     40,
+     110
+    ],
+    [
+     41,
+     89
+    ],
+    [
+     42,
+     48
+    ],
+    [
+     43,
+     48
+    ],
+    [
+     44,
+     95
+    ],
+    [
+     46,
+     110
+    ],
+    [
+     46,
+     114
+    ],
+    [
+     47,
+     98
+    ],
+    [
+     47,
+     110
+    ],
+    [
+     47,
+     117
+    ],
+    [
+     48,
+     86
+    ],
+    [
+     49,
+     116
+    ],
+    [
+     52,
+     86
+    ],
+    [
+     52,
+     96
+    ],
+    [
+     52,
+     103
+    ],
+    [
+     53,
+     106
+    ],
+    [
+     56,
+     64
+    ],
+    [
+     56,
+     94
+    ],
+    [
+     57,
+     58
+    ],
+    [
+     57,
+     59
+    ],
+    [
+     57,
+     93
+    ],
+    [
+     58,
+     88
+    ],
+    [
+     59,
+     86
+    ],
+    [
+     60,
+     94
+    ],
+    [
+     61,
+     67
+    ],
+    [
+     62,
+     114
+    ],
+    [
+     63,
+     109
+    ],
+    [
+     65,
+     95
+    ],
+    [
+     66,
+     95
+    ],
+    [
+     66,
+     99
+    ],
+    [
+     69,
+     109
+    ],
+    [
+     70,
+     78
+    ],
+    [
+     70,
+     86
+    ],
+    [
+     70,
+     98
+    ],
+    [
+     72,
+     109
+    ],
+    [
+     74,
+     76
+    ],
+    [
+     76,
+     86
+    ],
+    [
+     77,
+     86
+    ],
+    [
+     79,
+     98
+    ],
+    [
+     81,
+     84
+    ],
+    [
+     81,
+     92
+    ],
+    [
+     83,
+     114
+    ],
+    [
+     86,
+     119
+    ],
+    [
+     87,
+     104
+    ],
+    [
+     88,
+     104
+    ],
+    [
+     90,
+     112
+    ],
+    [
+     91,
+     102
+    ],
+    [
+     92,
+     108
+    ],
+    [
+     93,
+     108
+    ],
+    [
+     95,
+     107
+    ],
+    [
+     96,
+     112
+    ],
+    [
+     100,
+     115
+    ],
+    [
+     107,
+     108
+    ],
+    [
+     110,
+     116
+    ]
+   ],
+   "gt_pairs_per_dropped_edge_top": [
+    [
+     "110->116",
+     283
+    ],
+    [
+     "90->112",
+     145
+    ],
+    [
+     "92->108",
+     99
+    ],
+    [
+     "93->108",
+     54
+    ],
+    [
+     "96->112",
+     39
+    ],
+    [
+     "88->104",
+     22
+    ],
+    [
+     "87->104",
+     13
+    ],
+    [
+     "14->106",
+     13
+    ],
+    [
+     "20->36",
+     12
+    ],
+    [
+     "65->95",
+     10
+    ]
+   ]
+  }
+ },
+ "ok_all": true
+}

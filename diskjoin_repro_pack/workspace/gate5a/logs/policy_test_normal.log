@@ -1,0 +1,99 @@
+[gate4b1] policy=belady_reject capacity=1 capacity_default=16
+[gate4b1] policy=belady_forced capacity=1 capacity_default=16
+[gate4b1] policy=lru_forced capacity=1 capacity_default=16
+[gate4b1] policy=belady_reject capacity=2 capacity_default=16
+[gate4b1] policy=belady_forced capacity=2 capacity_default=16
+[gate4b1] policy=lru_forced capacity=2 capacity_default=16
+[gate4b1] policy=belady_reject capacity=2 capacity_default=16
+[gate4b1] policy=belady_forced capacity=2 capacity_default=16
+[gate4b1] policy=lru_forced capacity=2 capacity_default=16
+[gate4b1] policy=belady_forced capacity=3 capacity_default=16
+[gate4b1] policy=lru_forced capacity=3 capacity_default=16
+[gate4b1] policy=belady_reject capacity=2 capacity_default=16
+[gate4b1] policy=belady_forced capacity=2 capacity_default=16
+[gate4b1] policy=lru_forced capacity=2 capacity_default=16
+[T1 belady_reject cap=1 seq=0,1,0]
+  ok   miss                         = 2
+  ok   hit                          = 1
+  ok   admit(cold only)             = 1
+  ok   evict                        = 0
+  ok   reject                       = 1
+[T1 belady_forced cap=1 seq=0,1,0]
+  ok   miss                         = 3
+  ok   hit                          = 0
+  ok   admit(cold only)             = 1
+  ok   evict                        = 2
+  ok   reject                       = 0
+[T1 lru_forced cap=1 seq=0,1,0]
+  ok   miss                         = 3
+  ok   hit                          = 0
+  ok   admit(cold only)             = 1
+  ok   evict                        = 2
+  ok   reject                       = 0
+[T2 belady_reject cap=2 seq=0,1,2,0,1]
+  ok   miss                         = 3
+  ok   hit                          = 2
+  ok   admit(cold only)             = 2
+  ok   evict                        = 0
+  ok   reject                       = 1
+[T2 belady_forced cap=2 seq=0,1,2,0,1]
+  ok   miss                         = 4
+  ok   hit                          = 1
+  ok   admit(cold only)             = 2
+  ok   evict                        = 2
+  ok   reject                       = 0
+[T2 lru_forced cap=2 seq=0,1,2,0,1]
+  ok   miss                         = 5
+  ok   hit                          = 0
+  ok   admit(cold only)             = 2
+  ok   evict                        = 3
+  ok   reject                       = 0
+[T3 belady_reject cap=2 seq=0,1,0,1,2,0]
+  ok   miss                         = 3
+  ok   hit                          = 3
+  ok   admit(cold only)             = 2
+  ok   evict                        = 0
+  ok   reject                       = 1
+[T3 belady_forced cap=2 seq=0,1,0,1,2,0]
+  ok   miss                         = 3
+  ok   hit                          = 3
+  ok   admit(cold only)             = 2
+  ok   evict                        = 1
+  ok   reject                       = 0
+[T3 lru_forced cap=2 seq=0,1,0,1,2,0]
+  ok   miss                         = 4
+  ok   hit                          = 2
+  ok   admit(cold only)             = 2
+  ok   evict                        = 2
+  ok   reject                       = 0
+[T4 belady_forced cap=3 seq=0,1,2,0,1]
+  ok   miss                         = 3
+  ok   hit                          = 2
+  ok   admit(cold only)             = 3
+  ok   evict                        = 0
+  ok   reject                       = 0
+[T4 lru_forced cap=3 seq=0,1,2,0,1]
+  ok   miss                         = 3
+  ok   hit                          = 2
+  ok   admit(cold only)             = 3
+  ok   evict                        = 0
+  ok   reject                       = 0
+[T5 belady_reject cap=2 tasks={0,1,2},{2,0}]
+  ok   miss                         = 3
+  ok   hit                          = 2
+  ok   admit(cold only)             = 2
+  ok   evict                        = 1
+  ok   reject                       = 0
+[T5 belady_forced cap=2 tasks={0,1,2},{2,0}]
+  ok   miss                         = 3
+  ok   hit                          = 2
+  ok   admit(cold only)             = 2
+  ok   evict                        = 1
+  ok   reject                       = 0
+[T5 lru_forced cap=2 tasks={0,1,2},{2,0}]
+  ok   miss                         = 4
+  ok   hit                          = 1
+  ok   admit(cold only)             = 2
+  ok   evict                        = 2
+  ok   reject                       = 0
+ALL POLICY UNIT TESTS PASS

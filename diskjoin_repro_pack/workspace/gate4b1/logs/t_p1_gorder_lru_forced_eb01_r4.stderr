@@ -1,0 +1,2 @@
+[gate4b0] order=default window=4 window_default=4
+[gate4b1] policy=lru_forced capacity=62 capacity_default=62

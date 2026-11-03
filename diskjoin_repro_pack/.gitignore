@@ -1,5 +1,29 @@
-workspace/
+# Python
 __pycache__/
 *.pyc
+
+# Reference code & paper PDF (fetched separately via scripts/fetch_sources.sh)
 reference/DiskJoin/
 paper/*.pdf
+
+# --- workspace: exclude REGENERABLE content only ---
+# Kept: experiment results (runs/, results/), logs, source snapshots,
+#       patches, instrumentation, toolchain snapshot, configs.
+
+# 1) Temporary intermediate files (sorted runs, etc.)
+workspace/**/tmp/
+
+# 2) Build artifacts (rebuild with CMake; see docs/IMPLEMENTATION_AUDIT.md)
+workspace/**/build/
+workspace/**/build_instr/
+
+# 3) Datasets (regenerate with scripts/make_toy.py or re-download)
+workspace/**/*.fbin
+workspace/**/*.bvecs
+workspace/**/*.clusters
+workspace/**/*.prefix24m
+workspace/**/*.gz
+workspace/**/*.gz.*
+
+# Never commit netrc credential files (even test fixtures)
+*.netrc

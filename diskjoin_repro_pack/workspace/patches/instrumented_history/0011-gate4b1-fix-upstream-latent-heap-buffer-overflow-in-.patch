@@ -1,0 +1,70 @@
+From 51a90f7dd4752287d7c2fc8715e1ca1d76da52e1 Mon Sep 17 00:00:00 2001
+From: gate4b1 <gate4b1@local>
+Date: Mon, 2 Nov 2026 19:33:46 +0800
+Subject: [PATCH 11/11] gate4b1: fix upstream latent heap-buffer-overflow in
+ updateable_heap::sift_down: evaluate the right-son bounds guard before
+ right_son() reads at both sites; OOB (one past max_size storage) reachable
+ only via a key-decreasing update() on a full heap, i.e. the new lru_forced
+ hits; reference belady paths unaffected (update only sifts up; pop sifts at
+ even current_bound, no guard node); behaviour-identical on all defined
+ executions; evidence: logs/prefix_crash_p3_lru_asan.stderr +
+ logs/prefix_policy_test_asan.stderr
+
+---
+ utils/heap.h | 35 ++++++++++++++++++++++++++++++++---
+ 1 file changed, 32 insertions(+), 3 deletions(-)
+
+diff --git a/utils/heap.h b/utils/heap.h
+index ebbb314..27f7f28 100644
+--- a/utils/heap.h
++++ b/utils/heap.h
+@@ -100,14 +100,43 @@ private:
+         _elem aux = storage[crawler];
+ 
+         while (!is_leaf(crawler)) {
++            // [GATE4B1] Fix of an upstream latent bug (isolated copy only).
++            // When crawler has a left son but NO right son
++            // (right_son_pos(crawler) == current_bound), the original
++            // operand order read right_son(crawler) — storage[2*crawler+1],
++            // i.e. storage[current_bound] — BEFORE this guard: a
++            // heap-buffer-overflow read when current_bound == max_size
++            // (full heap; ASan: READ of size 8 one past a 63x16B region),
++            // or a stale-slot read otherwise. The guard is now evaluated
++            // first (|| short-circuits the read); the logical value is
++            // unchanged whenever the original read was well defined (right
++            // son exists => both orders evaluate the same two operands).
++            // Reachable only via a key-DECREASING update() on a full heap:
++            // the reference belady policies only ever INCREASE keys on
++            // update (-> sift_up) and pop() sifts with current_bound
++            // already decremented (62, even => no right-son gap exists
++            // while sifting from pop), so the default path never hits it;
++            // the new lru_forced policy does (recency keys decrease on
++            // hit). Evidence: logs/prefix_crash_p3_lru_asan.stderr (real
++            // run) and logs/prefix_policy_test_asan.stderr (standalone
++            // unit-test reproduction, oracle/policy_test.cpp T3/T5).
+             if (!comparator(aux.second, left_son(crawler).second) &&
+-                (!comparator(right_son(crawler).second, left_son(crawler).second) ||
+-                 right_son_pos(crawler) == current_bound)) {
++                (right_son_pos(crawler) == current_bound ||
++                 !comparator(right_son(crawler).second, left_son(crawler).second))) {
+                 storage[crawler] = left_son(crawler);
+                 positions[left_son(crawler).first] = crawler;
+                 crawler = left_son_pos(crawler);
+             }
+-            else if (!comparator(aux.second, right_son(crawler).second)) {
++            // [GATE4B1] Same guard-first reordering on the right-son branch:
++            // reaching this branch with no right son (guard true) means the
++            // first condition failed, i.e. aux outranks its only (left) son,
++            // so the correct action is to stop. The original condition read
++            // right_son(crawler) = storage[current_bound] (stale slot, or OOB
++            // on a full heap) before this decision. Unreachable in the
++            // reference configurations (see comment above); fixed for the
++            // same reason, with identical defined-case semantics.
++            else if (right_son_pos(crawler) != current_bound &&
++                     !comparator(aux.second, right_son(crawler).second)) {
+                 storage[crawler] = right_son(crawler);
+                 positions[right_son(crawler).first] = crawler;
+                 crawler = right_son_pos(crawler);
+-- 
+2.34.1
+

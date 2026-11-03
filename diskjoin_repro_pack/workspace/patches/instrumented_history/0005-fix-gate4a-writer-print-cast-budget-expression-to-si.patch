@@ -1,0 +1,26 @@
+From 47d92b44433d3b1dd566f9d52e3bb7a3cf7388e6 Mon Sep 17 00:00:00 2001
+From: gate4a-repro <gate4a@local>
+Date: Mon, 2 Nov 2026 15:20:21 +0800
+Subject: [PATCH 05/11] fix gate4a-writer print: cast budget expression to
+ size_t before %zu (varargs UB in instrumentation only)
+
+---
+ lib/ClusterIO.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+index c63ec2e..6201adf 100644
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -64,7 +64,7 @@ struct ClusterWriter {
+         // out of bounds of a zero-sized allocation. Print-only check.
+         if (getenv("GATE4A_STATS")) {
+             fprintf(stderr, "[gate4a-writer] cluster_num=%zu d=%zu budget_bytes=%zu buffer_size=%zu buffer_vectors=%zu total_buffer_bytes=%zu min_ok=%d\n",
+-                    cluster_num, d, budget * (size_t)1024 * 1024 * 1024, buffer_size,
++                    cluster_num, d, (size_t)(budget * (size_t)1024 * 1024 * 1024), buffer_size,
+                     buffer_size / (d * 4), buffer_size * cluster_num,
+                     buffer_size >= d * 4 ? 1 : 0);
+         }
+-- 
+2.34.1
+

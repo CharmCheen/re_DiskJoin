@@ -1,0 +1,43 @@
+Toy data checked: n=12000, d=16, sampled_gt=599
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/build
+[ 50%] Building CXX object CMakeFiles/main.dir/expr/main.cpp.o
+[100%] Linking CXX executable main
+[100%] Built target main
+Run folder: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/runs/toy-jw4eXS
+[0.0560715 s] Build done
+recall = 1
+[0.0836922 s] Join done
+{
+  "status": "PASS_SMOKE_ONLY",
+  "sampled_recall": 1.0,
+  "sampled_gt": 599,
+  "build_elapsed_seconds": 0.0560715,
+  "join_cumulative_elapsed_seconds": 0.0836922,
+  "warning": "Reference sampled recall uses IDs divisible by 100000. Not a full recall/quality proof."
+}
+Completed: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/runs/toy-jw4eXS

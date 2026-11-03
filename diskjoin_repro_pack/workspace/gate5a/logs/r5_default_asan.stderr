@@ -1,0 +1,56 @@
+=================================================================
+==240164==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x5080000004f4 at pc 0x5f7f9c48e134 bp 0x7ffd2fec9100 sp 0x7ffd2fec90f0
+READ of size 4 at 0x5080000004f4 thread T0
+    #0 0x5f7f9c48e133 in hnswlib::HierarchicalNSW<float>::searchBaseLayer(unsigned int, void const*, int) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x6b133)
+    #1 0x5f7f9c4a9e7d in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, int) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x86e7d)
+    #2 0x5f7f9c4ab4da in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, bool) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x884da)
+    #3 0x5f7f9c46df2b in one_level_kmeans(ConfigReader) [clone ._omp_fn.0] (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x4af2b)
+    #4 0x7ffb7e675a15 in GOMP_parallel (/lib/x86_64-linux-gnu/libgomp.so.1+0x14a15)
+    #5 0x5f7f9c44d370 in one_level_kmeans(ConfigReader) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x2a370)
+    #6 0x5f7f9c4311d6 in main (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0xe1d6)
+    #7 0x7ffb7d429d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #8 0x7ffb7d429e3f in __libc_start_main_impl ../csu/libc-start.c:392
+    #9 0x5f7f9c43e774 in _start (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x1b774)
+
+0x5080000004f5 is located 0 bytes to the right of 85-byte region [0x5080000004a0,0x5080000004f5)
+allocated by thread T0 here:
+    #0 0x7ffb7dcb4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x5f7f9c4aa21f in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, int) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x8721f)
+    #2 0x5f7f9c4ab4da in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, bool) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x884da)
+    #3 0x5f7f9c46df73 in one_level_kmeans(ConfigReader) [clone ._omp_fn.0] (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x4af73)
+    #4 0x7ffb7e675a15 in GOMP_parallel (/lib/x86_64-linux-gnu/libgomp.so.1+0x14a15)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan/main+0x6b133) in hnswlib::HierarchicalNSW<float>::searchBaseLayer(unsigned int, void const*, int)
+Shadow bytes around the buggy address:
+  0x0a107fff8040: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 01 fa
+  0x0a107fff8050: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 01 fa
+  0x0a107fff8060: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff8070: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff8080: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+=>0x0a107fff8090: fa fa fa fa 00 00 00 00 00 00 00 00 00 00[05]fa
+  0x0a107fff80a0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80b0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80c0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80d0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80e0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==240164==ABORTING

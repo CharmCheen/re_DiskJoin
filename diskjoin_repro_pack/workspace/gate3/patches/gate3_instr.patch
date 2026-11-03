@@ -1,0 +1,115 @@
+diff -ruN '--exclude=.git' reference/DiskJoin/lib/DiskJoin.h workspace/gate3/instrumented/DiskJoin/lib/DiskJoin.h
+--- reference/DiskJoin/lib/DiskJoin.h	2026-11-02 12:13:01.357883453 +0800
++++ workspace/gate3/instrumented/DiskJoin/lib/DiskJoin.h	2026-11-02 14:42:39.944306043 +0800
+@@ -2,6 +2,9 @@
+ 
+ #include <algorithm>
+ #include <thread>
++#include <cstdlib>
++#include <fstream>
++#include <omp.h>
+ #include "Kmeans.h"
+ #include "ClusterIO.h"
+ #include "Gorder.h"
+@@ -98,6 +101,37 @@
+             reordered_tasks[perm[i]] = shuffled_tasks[i];
+             order[perm[i]] = i;
+         }
++        // [GATE3] runtime invariant checks, gated, no effect on join logic.
++        if (getenv("GATE3_INVARIANTS")) {
++            std::vector<size_t> seen(cluster_num, 0);
++            size_t perm_ok = 1, viol_head = 0, empty_tasks = 0, self_missing = 0;
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (order[i] >= cluster_num || seen[order[i]]) { perm_ok = 0; }
++                else seen[order[i]] = 1;
++            }
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (reordered_tasks[i].empty()) { empty_tasks++; continue; }
++                if (reordered_tasks[i][0] != order[i]) viol_head++;
++                bool has_self = false;
++                for (auto nc : reordered_tasks[i]) if (nc == order[i]) has_self = true;
++                if (!has_self) self_missing++;
++            }
++            size_t task_total = 0, upper_ok = 1;
++            for (size_t i = 0; i < cluster_num; i++) {
++                task_total += reordered_tasks[i].size();
++                for (auto nc : reordered_tasks[i]) if (nc < order[i]) upper_ok = 0;
++            }
++            size_t sum_bucket = 0;
++            for (auto s : bucket_sizes) sum_bucket += s;
++            std::cerr << "[gate3-inv] perm_ok=" << perm_ok
++                      << " empty_tasks=" << empty_tasks
++                      << " head_mismatch=" << viol_head
++                      << " self_missing=" << self_missing
++                      << " upper_triangle_ok=" << upper_ok
++                      << " task_total=" << task_total
++                      << " bucket_sum=" << sum_bucket
++                      << " n=" << (size_t)cluster_reader.n << "\n";
++        }
+         std::vector<float> data(max_task_num * length);
+ 
+         float io_size = 0;
+@@ -109,6 +143,12 @@
+         float disk_time = 0;
+         float comp_time = 0;
+         float dist_comp = 0;
++        // [GATE3] env-gated pair-output instrumentation. It records the same
++        // hit condition used by the reference and does not alter candidate
++        // generation, ordering, cache behaviour, pruning or distance logic.
++        const char* gate3_pair_out = getenv("GATE3_PAIR_OUT");
++        std::vector<std::vector<std::pair<size_t, size_t>>> gate3_pair_bufs;
++        if (gate3_pair_out) gate3_pair_bufs.resize(omp_get_max_threads());
+         for (size_t i = 0; i < cluster_num; i++) {
+             auto target_cluster = order[i];
+             auto& target_tasks = reordered_tasks[i];
+@@ -125,6 +165,8 @@
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+                 float* vec1 = data.data() + j * d;
++                std::vector<std::pair<size_t, size_t>>* gate3_local =
++                    gate3_pair_out ? &gate3_pair_bufs[omp_get_thread_num()] : nullptr;
+                 for (size_t l = 0; l < bucket_sizes[target_cluster]; l++) {
+                     auto id2 = assignment[target_cluster][l];
+                     if (id2 >= id1) continue;
+@@ -134,6 +176,7 @@
+                     if (dist < epsilon * epsilon) {
+                         if (id1 % 100000 == 0) count++;
+                         if (id2 % 100000 == 0) count++;
++                        if (gate3_local) gate3_local->emplace_back(std::min(id1, id2), std::max(id1, id2));
+                     }
+                 }
+ 
+@@ -148,11 +191,33 @@
+                         if (dist1 < epsilon * epsilon) {
+                             if (id1 % 100000 == 0) count++;
+                             if (id2 % 100000 == 0) count++;
++                            if (gate3_local) gate3_local->emplace_back(std::min(id1, id2), std::max(id1, id2));
+                         };
+                     }
+                 }
+             }
+         }
+         std::cout << "recall = " << 1.0 * count / config.gt << "\n";
++        // [GATE3] precise statistics, gated.
++        if (getenv("GATE3_INVARIANTS")) {
++            std::cerr << "[gate3-stat] dist_comp=" << (size_t)dist_comp
++                      << " sampled_count=" << count
++                      << " gt=" << config.gt << "\n";
++        }
++        // [GATE3] write per-thread pair buffers (thread-local -> no locking).
++        if (gate3_pair_out) {
++            std::ofstream gate3_f(gate3_pair_out);
++            size_t gate3_total = 0;
++            for (auto& gate3_pb : gate3_pair_bufs) {
++                for (auto& gate3_pr : gate3_pb) {
++                    gate3_f << gate3_pr.first << " " << gate3_pr.second << "\n";
++                    gate3_total++;
++                }
++            }
++            gate3_f.close();
++            std::cerr << "[gate3] pair_dump=" << gate3_pair_out
++                      << " pairs=" << gate3_total
++                      << " threads=" << gate3_pair_bufs.size() << "\n";
++        }
+     }
+ };

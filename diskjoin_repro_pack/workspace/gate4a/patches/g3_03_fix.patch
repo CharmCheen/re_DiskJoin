@@ -1,0 +1,16 @@
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+index 5d83596..c63ec2e 100644
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -216,6 +216,9 @@ struct ClusterReader {
+         fcluster.close();
+         fmeta.close();
+         close(cluster_fd);
+-        delete[] buffer;
++        // [GATE4A] G3-03 fix: buffer was allocated with aligned_alloc (POSIX),
++        // so it must be released with free(), not delete[] (ASan: alloc-
++        // dealloc-mismatch). Semantics of the read path are unchanged.
++        free(buffer);
+     }
+ };
+\ No newline at end of file

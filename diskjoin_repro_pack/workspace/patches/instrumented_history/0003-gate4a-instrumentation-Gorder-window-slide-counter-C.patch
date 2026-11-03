@@ -1,0 +1,251 @@
+From f1ba74086f55e1cc7370eacd33b95864ea47110b Mon Sep 17 00:00:00 2001
+From: gate4a-repro <gate4a@local>
+Date: Mon, 2 Nov 2026 15:15:25 +0800
+Subject: [PATCH 03/11] gate4a instrumentation: Gorder window-slide counter,
+ Cache admit/evict/reject counters + access trace, config decomposition print,
+ task-graph dump (all env-gated)
+
+---
+ lib/Cache.h     | 47 +++++++++++++++++++++++++++++++++++++++++++----
+ lib/ClusterIO.h | 12 ++++++++++++
+ lib/DiskJoin.h  | 40 ++++++++++++++++++++++++++++++++++++++++
+ lib/Gorder.h    | 22 +++++++++++++++++++++-
+ 4 files changed, 116 insertions(+), 5 deletions(-)
+
+diff --git a/lib/Cache.h b/lib/Cache.h
+index 023700e..ed82a76 100644
+--- a/lib/Cache.h
++++ b/lib/Cache.h
+@@ -3,6 +3,9 @@
+ #include "../utils/utils.h"
+ #include "../utils/heap.h"
+ #include "string.h"
++#include <cstdlib>
++#include <cstdio>
++#include <fstream>
+ 
+ struct Cache {
+     size_t budget;
+@@ -13,6 +16,12 @@ struct Cache {
+     size_t filled;
+     size_t hit;
+     size_t total;
++    // [GATE4A] mechanism counters: cold admits, true evictions, rejected
++    // pushes (cache full and new bucket's next use is later than victim's).
++    size_t admit;
++    size_t evict;
++    size_t reject;
++    std::ofstream g4a_trace; // [GATE4A] optional access/eviction trace
+     updateable_heap<size_t, size_t, std::greater<size_t>> priority;
+     std::vector<int> address_table;
+     std::vector<size_t> ptr;
+@@ -25,6 +34,16 @@ struct Cache {
+         filled = 0;
+         hit = 0;
+         total = 0;
++        admit = 0;
++        evict = 0;
++        reject = 0;
++        // [GATE4A] env-gated trace: one line per access ("A seq id hit") and
++        // per push ("P seq id admit|evict|reject victim"). find/push are only
++        // called from the serial section of DiskJoin::search, so no locking
++        // is needed.
++        if (getenv("GATE4A_CACHE_TRACE")) {
++            g4a_trace.open(getenv("GATE4A_CACHE_TRACE"));
++        }
+     }
+ 
+     void init(std::vector<std::vector<size_t>> tasks, size_t n = 0) {
+@@ -44,10 +63,14 @@ struct Cache {
+     inline bool find(size_t id, float* buffer, unsigned bucket_length) {
+         total++;
+         ptr[id]++;
+-        if (address_table[id] == -1) return false;
++        if (address_table[id] == -1) {
++            if (g4a_trace.is_open()) g4a_trace << "A " << total << " " << id << " 0\n";
++            return false;
++        }
+         hit++;
+         priority.update(std::make_pair(id, iters[id][ptr[id]]));
+         memcpy(buffer, data + address_table[id] * length, bucket_length * sizeof(float));
++        if (g4a_trace.is_open()) g4a_trace << "A " << total << " " << id << " 1\n";
+         return true;
+     }
+ 
+@@ -57,12 +80,28 @@ struct Cache {
+             memcpy(data + address_table[id] * length, buffer, bucket_length * sizeof(float));
+             priority.add(std::make_pair(id, iters[id][ptr[id]]));
+             filled++;
++            admit++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " admit -1\n";
+         } else if (priority.top().second > iters[id][ptr[id]]) {
+-            memcpy(data + address_table[priority.top().first] * length, buffer, bucket_length * sizeof(float));
+-            address_table[id] = address_table[priority.top().first];
+-            address_table[priority.top().first] = -1;
++            auto g4a_victim = priority.top().first;
++            memcpy(data + address_table[g4a_victim] * length, buffer, bucket_length * sizeof(float));
++            address_table[id] = address_table[g4a_victim];
++            address_table[g4a_victim] = -1;
+             priority.pop();
+             priority.add(std::make_pair(id, iters[id][ptr[id]]));
++            evict++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " evict " << g4a_victim << "\n";
++        } else {
++            reject++;
++            if (g4a_trace.is_open()) g4a_trace << "P " << total << " " << id << " reject -1\n";
++        }
++    }
++
++    // [GATE4A] env-gated mechanism statistics (print-only).
++    void g4a_stats() {
++        if (getenv("GATE4A_STATS")) {
++            fprintf(stderr, "[gate4a-cache] capacity_slots=%zu length=%zu budget_bytes=%zu filled=%zu total=%zu hit=%zu miss=%zu admit=%zu evict=%zu reject=%zu\n",
++                    size, length, budget, filled, total, hit, total - hit, admit, evict, reject);
+         }
+     }
+ 
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+index d016760..5d83596 100644
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -6,6 +6,8 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <string.h>
++#include <cstdlib>
++#include <cstdio>
+ #include <omp.h>
+ 
+ #include "DataReader.h"
+@@ -56,6 +58,16 @@ struct ClusterWriter {
+         cluster_num = assignment.size();
+         radii.resize(cluster_num);
+         size_t buffer_size = div_round_up(budget * (size_t)1024 * 1024 * 1024 / cluster_num, d * 4) * d * 4;
++        // [GATE4A] env-gated build-side accounting: the SAME mem_budget that
++        // sizes the search-time Cache also sizes this per-bucket write buffer.
++        // buffer_size must stay >= d*4 (>=1 vector) or the memcpy below writes
++        // out of bounds of a zero-sized allocation. Print-only check.
++        if (getenv("GATE4A_STATS")) {
++            fprintf(stderr, "[gate4a-writer] cluster_num=%zu d=%zu budget_bytes=%zu buffer_size=%zu buffer_vectors=%zu total_buffer_bytes=%zu min_ok=%d\n",
++                    cluster_num, d, budget * (size_t)1024 * 1024 * 1024, buffer_size,
++                    buffer_size / (d * 4), buffer_size * cluster_num,
++                    buffer_size >= d * 4 ? 1 : 0);
++        }
+         char* buffer = new char[cluster_num * buffer_size];
+         std::vector<size_t> buffer_pos(cluster_num);
+         std::vector<size_t> file_pos(cluster_num);
+diff --git a/lib/DiskJoin.h b/lib/DiskJoin.h
+index 24159df..dd11256 100644
+--- a/lib/DiskJoin.h
++++ b/lib/DiskJoin.h
+@@ -101,6 +101,45 @@ struct DiskJoin {
+             reordered_tasks[perm[i]] = shuffled_tasks[i];
+             order[perm[i]] = i;
+         }
++        // [GATE4A] env-gated configuration decomposition: shows how ONE
++        // mem_budget value simultaneously determines (a) the ClusterWriter
++        // per-bucket write buffer used at build time, (b) this Cache capacity,
++        // and (c) the Gorder window passed above. Print-only.
++        if (getenv("GATE4A_STATS")) {
++            size_t capacity = budget / 4 / length;
++            size_t window = budget / 4 / length / config.K * 2;
++            size_t writer_buffer = div_round_up(budget / cluster_num, d * 4) * d * 4;
++            std::cerr << "[gate4a-config] n=" << (size_t)cluster_reader.n
++                      << " d=" << d
++                      << " cluster_num=" << cluster_num
++                      << " max_points=" << cluster_reader.max_points
++                      << " budget_bytes=" << budget
++                      << " length=" << length
++                      << " capacity_slots=" << capacity
++                      << " K=" << config.K
++                      << " window=" << window
++                      << " window_lt_cluster_num=" << (window < cluster_num ? 1 : 0)
++                      << " capacity_lt_cluster_num=" << (0 < capacity && capacity < cluster_num ? 1 : 0)
++                      << " writer_buffer_bytes=" << writer_buffer
++                      << " writer_buffer_vectors=" << (writer_buffer / (d * 4))
++                      << " error_bound=" << config.error_bound
++                      << " radius=" << config.radius
++                      << " task_num_total=" << task_num
++                      << " max_task_num=" << max_task_num
++                      << "\n";
++        }
++        // [GATE4A] env-gated task-graph dump: line i is
++        // "<slot> <target_bucket> <deg> <neighbour buckets...>" after the
++        // Gorder reorder. The identity-order graph is recoverable because
++        // the lists themselves are unmodified, only their placement permuted.
++        if (getenv("GATE4A_TASK_OUT")) {
++            std::ofstream g4a_tasks(getenv("GATE4A_TASK_OUT"));
++            for (size_t i = 0; i < cluster_num; i++) {
++                g4a_tasks << i << " " << order[i] << " " << reordered_tasks[i].size();
++                for (auto nc : reordered_tasks[i]) g4a_tasks << " " << nc;
++                g4a_tasks << "\n";
++            }
++        }
+         // [GATE3] runtime invariant checks, gated, no effect on join logic.
+         if (getenv("GATE3_INVARIANTS")) {
+             std::vector<size_t> seen(cluster_num, 0);
+@@ -198,6 +237,7 @@ struct DiskJoin {
+             }
+         }
+         std::cout << "recall = " << 1.0 * count / config.gt << "\n";
++        cache.g4a_stats(); // [GATE4A] env-gated cache mechanism statistics
+         // [GATE3] precise statistics, gated.
+         if (getenv("GATE3_INVARIANTS")) {
+             std::cerr << "[gate3-stat] dist_comp=" << (size_t)dist_comp
+diff --git a/lib/Gorder.h b/lib/Gorder.h
+index d5eb6b7..3b397c3 100644
+--- a/lib/Gorder.h
++++ b/lib/Gorder.h
+@@ -1,6 +1,8 @@
+ #pragma once
+ 
+ #include <vector>
++#include <cstdlib>
++#include <cstdio>
+ #include "Unitheap.h"
+ 
+ using namespace std;
+@@ -82,14 +84,18 @@ vector<size_t> order_gorder(const vector<vector<size_t>> &out_neigh, ul window,
+ 
+ 	move_window(out_neigh, in_neigh, heap, hub, hub);
+ 
++	ul g4a_window_removals = 0; // [GATE4A] window-slide event counter
++
+ 	while (heap.heapsize > 0) {
+ 		// if (order.size() % 10000 == 0)
+ 			// cout << order.size() << "\n";
+ 		ul new_node = heap.ExtractMax();
+ 		order.push_back(new_node);
+ 		ul old_node = new_node;
+-		if (order.size() > window) // remove oldest node of window
++		if (order.size() > window) { // remove oldest node of window
+ 			old_node = order[order.size() - window - 1];
++			g4a_window_removals++; // [GATE4A] window slide actually executed
++		}
+ 		// else Debug("no window"<<endl)
+ 		move_window(out_neigh, in_neigh, heap, new_node, old_node);
+ 	}
+@@ -99,5 +105,19 @@ vector<size_t> order_gorder(const vector<vector<size_t>> &out_neigh, ul window,
+ 		rank[order[i]] = i;
+ 	}
+ 
++	// [GATE4A] env-gated window-activation statistics (print-only).
++	if (getenv("GATE4A_STATS")) {
++		int perm_ok = 1;
++		if (rank.size() == n) {
++			std::vector<size_t> seen(n, 0);
++			for (size_t i = 0; i < n; i++) {
++				if (rank[i] >= n || seen[rank[i]]) { perm_ok = 0; break; }
++				seen[rank[i]] = 1;
++			}
++		} else perm_ok = 0;
++		fprintf(stderr, "[gate4a-gorder] n=%zu n2=%zu window=%zu insertions=%zu window_removals=%zu perm_ok=%d\n",
++			(size_t)n, (size_t)n2, (size_t)window, (size_t)order.size(), (size_t)g4a_window_removals, perm_ok);
++	}
++
+ 	return rank;
+ }
+\ No newline at end of file
+-- 
+2.34.1
+

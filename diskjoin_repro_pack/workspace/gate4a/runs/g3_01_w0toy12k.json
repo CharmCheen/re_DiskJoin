@@ -1,0 +1,20 @@
+{
+ "n": 12000,
+ "d": 16,
+ "cluster_num": 120,
+ "centroid_unique_matches": 120,
+ "centroid_unmatched": 0,
+ "centroid_ambiguous": 0,
+ "duplicate_centroids": 0,
+ "center_in_own_bucket": 120,
+ "center_not_in_own_bucket": 0,
+ "sampled_vectors": 420,
+ "assigned_is_nearest": 352,
+ "assigned_is_second": 68,
+ "assigned_is_other": 0,
+ "centers_assigned_nearest": 121,
+ "centers_assigned_second": 0,
+ "centers_assigned_other": 0,
+ "centers_with_d1_lt_1.2_d2": 121,
+ "centers_with_d2": 121
+}

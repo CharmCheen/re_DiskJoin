@@ -1,0 +1,5 @@
+deterministic: opt=7 belady=7 ref=7 OK
+random cases=300 fails=0
+data-integrity: copy/padding errors=0 OK
+no-eviction: ref_miss=50 expected=50 OK
+CACHE_HARNESS PASS (fails=0)

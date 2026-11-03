@@ -1,0 +1,15 @@
+{
+  "n": 4000,
+  "radius": 0.2,
+  "gt_pairs": 68029,
+  "gt_illegal_lines": 0,
+  "gt_duplicates": 0,
+  "found_pairs": 59151,
+  "found_illegal_lines": 0,
+  "found_duplicates": 0,
+  "TP": 59151,
+  "FP": 0,
+  "FN": 8878,
+  "recall": 0.8694968322333123,
+  "precision": 1.0
+}

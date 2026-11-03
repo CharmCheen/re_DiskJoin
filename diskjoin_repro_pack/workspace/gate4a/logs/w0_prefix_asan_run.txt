@@ -1,0 +1,21 @@
+[0.0742936 s] Build done
+=================================================================
+==195676==ERROR: AddressSanitizer: alloc-dealloc-mismatch (malloc vs operator delete []) on 0x753f955a8000
+    #0 0x753f956b6e57 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:163
+    #1 0x63d0754c4ad0 in ClusterReader::~ClusterReader() (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_asan/main+0x4dad0)
+    #2 0x63d0754890b0 in main (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_asan/main+0x120b0)
+    #3 0x753f94e29d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #4 0x753f94e29e3f in __libc_start_main_impl ../csu/libc-start.c:392
+    #5 0x63d07548da84 in _start (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_asan/main+0x16a84)
+
+0x753f955a8000 is located 0 bytes inside of 294912-byte region [0x753f955a8000,0x753f955f0000)
+allocated by thread T0 here:
+    #0 0x753f956b5387 in __interceptor_aligned_alloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:192
+    #1 0x63d0754d0625 in ClusterReader::readMetaData() (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_asan/main+0x59625)
+    #2 0x63d075484542 in main (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_asan/main+0xd542)
+    #3 0x753f94e29d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+
+SUMMARY: AddressSanitizer: alloc-dealloc-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:163 in operator delete[](void*)
+==195676==HINT: if you don't care about these errors you may set ASAN_OPTIONS=alloc_dealloc_mismatch=0
+recall = 1
+[0.22504 s] Join done

@@ -1,0 +1,55 @@
+51a90f7dd4752287d7c2fc8715e1ca1d76da52e1
+Author: gate4b1 <gate4b1@local>
+Date: 2026-11-02 19:33:46 +0800
+Subject: gate4b1: fix upstream latent heap-buffer-overflow in updateable_heap::sift_down: evaluate the right-son bounds guard before right_son() reads at both sites; OOB (one past max_size storage) reachable only via a key-decreasing update() on a full heap, i.e. the new lru_forced hits; reference belady paths unaffected (update only sifts up; pop sifts at even current_bound, no guard node); behaviour-identical on all defined executions; evidence: logs/prefix_crash_p3_lru_asan.stderr + logs/prefix_policy_test_asan.stderr
+
+17fa981ec0b3fe1d66791a94462ad4e4103e8431
+Author: gate4b1 <gate4b1@local>
+Date: 2026-11-02 19:09:22 +0800
+Subject: gate4b1: standalone policy/capacity unit tests (14 cases, hand-derived counters)
+
+f1ac471493542aa8c8705d3169513488d68ec60c
+Author: gate4b1 <gate4b1@local>
+Date: 2026-11-02 19:04:08 +0800
+Subject: gate4b1: fix ClusterWriter::writeClusters leaks (delete[] data_buf/buffer at scope exit; Gate 4B-0 LSan evidence retained in logs/)
+
+e0d11c1bbefce7c85f0ec73f7cb386c302012946
+Author: gate4b1 <gate4b1@local>
+Date: 2026-11-02 19:03:53 +0800
+Subject: gate4b1: env-gated GATE4B1_CAPACITY (slot-count override only) + GATE4B1_POLICY {belady_reject,belady_forced,lru_forced} + O_DIRECT read accounting (read_calls/effective/requested bytes); default behaviour unchanged
+
+7e4df0cb13353e6451b9b630692584a57260c7d9
+Author: gate4b0 <gate4b0@local>
+Date: 2026-11-02 16:58:36 +0800
+Subject: gate4b0: env-gated GATE4B0_WINDOW + GATE4B0_ORDER/GATE4B0_PERM_FILE overrides (applied after order_gorder; default behaviour unchanged)
+
+0a82b10e737fb0744e9e3ab676cecf552981a3e9
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:50:15 +0800
+Subject: add env-gated GATE4A_KNN_OUT raw candidate dump (post-knn, pre-pruning; print-only, omp-critical)
+
+47d92b44433d3b1dd566f9d52e3bb7a3cf7388e6
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:20:21 +0800
+Subject: fix gate4a-writer print: cast budget expression to size_t before %zu (varargs UB in instrumentation only)
+
+eafa7ae12c6a277bf829015370d70e0ff4a8f39d
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:17:46 +0800
+Subject: G3-03 fix: free() the aligned_alloc buffer in ~ClusterReader (matches allocation family; read path semantics unchanged)
+
+f1ba74086f55e1cc7370eacd33b95864ea47110b
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:15:25 +0800
+Subject: gate4a instrumentation: Gorder window-slide counter, Cache admit/evict/reject counters + access trace, config decomposition print, task-graph dump (all env-gated)
+
+f8d6f2ebf913b4f1729f3f02118c30b587de9342
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:12:39 +0800
+Subject: gate3 instrumentation: GATE3_PAIR_OUT per-thread pair dump + GATE3_INVARIANTS checks (copy of workspace/gate3/instrumented/DiskJoin/lib/DiskJoin.h)
+
+0cda02acc2cf775c08e0222eb286428e46c43f34
+Author: gate4a-repro <gate4a@local>
+Date: 2026-11-02 15:12:33 +0800
+Subject: reference DiskJoin, git archive of aa86151f97527b1dcf9a032d523c1d67d892454a
+

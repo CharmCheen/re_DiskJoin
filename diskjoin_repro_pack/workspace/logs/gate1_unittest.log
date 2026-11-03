@@ -1,0 +1,10 @@
+test_bad_capacity (test_micro.CacheTests) ... ok
+test_belady_no_worse_than_lru_in_this_example (test_micro.CacheTests) ... ok
+test_original_belady_five_misses (test_micro.CacheTests) ... ok
+test_reordered_belady_four_misses (test_micro.CacheTests) ... ok
+test_generation_and_config (test_toy.DataTests) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.252s
+
+OK

@@ -1,0 +1,1109 @@
+                                                          DiskJoin: Large-scale Vector Similarity Join with SSD
+                                                                                Yanqi Chen                                                                         Xiao Yan
+                                                             University of Massachusetts Amherst                                            Centre for Perceptual and Interactive Intelligence
+                                                                  yanqichen@cs.umass.edu                                                               yanxiaosunny@gmail.com
+
+                                                                          Alexandra Meliou                                                                          Eric Lo
+                                                             University of Massachusetts Amherst                                                     Chinese University of Hong Kong
+                                                                     ameli@cs.umass.edu                                                                  ericlo@cse.cuhk.edu.hk
+                                         Abstract                                                                                         Metric                  DiskANN [48]        DiskJoin [this paper]
+                                         Similarity join—a widely used operation in data science—finds all                                Total time (sec)            130, 107                 1,185
+arXiv:2508.18494v2 [cs.DB] 10 Oct 2025
+
+
+
+
+                                         pairs of items that have distance smaller than a threshold. Prior                                Disk time (sec)              93, 417                  198
+                                         work has explored distributed computation methods to scale simi-                                 Disk traffic (GB)           115, 854                  265
+                                         larity join to large data volumes but these methods require a cluster
+                                         deployment, and efficiency suffers from expensive inter-machine                                 Figure 1: Profiling results for a baseline solution—using the
+                                         communication. On the other hand, disk-based solutions are more                                 state-of-the-art SSD-based vector index DiskANN [48] to
+                                         cost-effective by using a single machine and storing the large dataset                          perform vector similarity join—and our DiskJoin on the Bi-
+                                         on high-performance external storage, such as NVMe SSDs, but                                    gANN100M dataset at 90% recall. Both methods use a memory
+                                         in these methods the disk I/O time is a serious bottleneck. In this                             size that is 10% of the dataset size.
+                                         paper, we propose DiskJoin, the first disk-based similarity join algo-
+                                         rithm that can process billion-scale vector datasets efficiently on a
+                                         single machine. DiskJoin improves disk I/O by tailoring the data ac-
+                                         cess patterns to avoid repetitive accesses and read amplification. It                           proteins) to vector embeddings and manage these objects via em-
+                                         also uses main memory as a dynamic cache and carefully manages                                  beddings [35, 42, 51]. For instance, convolution neural networks
+                                         cache eviction to improve cache hit rate and reduce disk retrieval                              (CNNs) map images to embeddings [35], transformer-based large
+                                         time. For further acceleration, we adopt a probabilistic pruning tech-                          language models (LLMs) map text segments to embeddings [42],
+                                         nique that can effectively prune a large number of vector pairs from                            and recommendation models map users and products to embed-
+                                         computation. Our evaluation on real-world, large-scale datasets                                 dings [51]. On these vector embeddings, similarity—e.g., measured
+                                         shows that DiskJoin significantly outperforms alternatives, achiev-                             via Euclidean distance or cosine similarity—is a crucial notion. For
+                                         ing speedups from 50× to 1000×.                                                                 example, close similarity of two vector embeddings is used to in-
+                                                                                                                                         dicate that two images are similar, that two text segments have
+                                         Keywords                                                                                        similar meanings, or that a user may like a product.
+                                         Vector, Similarity join, Disk-based processing                                                  Vector similarity join. Similarity self-join (SSJ), which seeks all
+                                                                                                                                         pairs of similar data points, is a well-established problem that has
+                                         ACM Reference Format:
+                                         Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo. 2025. DiskJoin: Large-
+                                                                                                                                         been extensively studied in the literature. SSJ for vector data lies
+                                         scale Vector Similarity Join with SSD. Proc. ACM Manag. Data 3, 6 (SIGMOD),                     at the core of many applications like near-duplicate detection [1,
+                                         Article 315 (December 2025), 15 pages. https://doi.org/10.1145/3769780                          17, 27], outlier detection [10], and more. We give three practical
+                                                                                                                                         examples and then provide a formal problem definition.
+                                                                                                                                         Video deduplication [16]: A video website maintains a large number
+                                         1     Introduction
+                                                                                                                                           of videos, but many are similar to each other [52, 58]. For example,
+                                         In machine learning workflows, it is common practice to use models                                the same clip may be uploaded by different users or encoded in
+                                         to map objects with complex semantics (e.g., text, images, videos,                                different formats; highly-overlapping segments may be cropped
+                                                                                                                                           from one video. Identifying and removing these duplicates can
+                                         Authors’ Contact Information: Yanqi Chen, University of Massachusetts Amherst, ,
+                                         yanqichen@cs.umass.edu; Xiao Yan, Centre for Perceptual and Interactive Intelligence,             save resources [59] and avoid repetitive content recommendations.
+                                         , yanxiaosunny@gmail.com; Alexandra Meliou, University of Massachusetts Amherst,                  Similar videos (as well as other formats like images or text) can
+                                         , ameli@cs.umass.edu; Eric Lo, Chinese University of Hong Kong, , ericlo@cse.cuhk.                be identified by performing SSJ over their vector embeddings.
+                                         edu.hk.
+                                                                                                                                         Training data deduplication [1]: Dataset deduplication is a crucial
+                                         Permission to make digital or hard copies of all or part of this work for personal or
+                                                                                                                                           step in machine learning pipelines, especially when training large
+                                         classroom use is granted without fee provided that copies are not made or distributed             language models (LLMs), where the training datasets often contain
+                                         for profit or commercial advantage and that copies bear this notice and the full citation         billions of examples. In particular, semantic deduplication—which
+                                         on the first page. Copyrights for components of this work owned by others than the
+                                         author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or            identifies pairs of data that are semantically similar but not exactly
+                                         republish, to post on servers or to redistribute to lists, requires prior specific permission     identical—has been shown to significantly reduce dataset size,
+                                         and/or a fee. Request permissions from permissions@acm.org.                                       while maintaining, or even improving, model performance. A
+                                         © 2025 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+                                         ACM 2836-6573/2025/12-ART315                                                                      practical approach to enabling semantic deduplication at scale is
+                                         https://doi.org/10.1145/3769780                                                                   to apply similarity self-join over vector embeddings of the data.
+Conference’17, July 2017, Washington, DC, USA                                                               Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+Outlier detection [11]: An object is considered an outlier if it signifi-     SSJ is to use distributed methods that involve multiple machines.
+ cantly deviates from other objects. With the embedding vectors,              However, distributed solutions are expensive to deploy and usually
+ the deviation can be quantified using the number of neighbors                suffer from costly inter-machine communication [18, 56].
+ that are within a distance threshold from a vector [39]. If a vector         SSD-based alternative and challenges. SSDs can offer a practical
+ has only a few similar neighbors, we can conclude that its cor-              and cost-effective alternative to distributed SSJ: they are cheap
+ responding object is an outlier, which requires special attention            (1TB currently costs ∼$60), capacious (10+ TBs are common), and
+ (e.g., a fraudulent transaction or abnormal training sample).                reasonably fast (reaching 1.4M random IOPS and 7 GB/s bandwidth).
+Definition 1 (Similarity self-join (SSJ) for vector dataset). Given a         An alternative storage option is persistent memory (PM), which is
+vector dataset X = {𝑥 1, 𝑥 2, · · · , 𝑥 𝑁 }, where each 𝑥𝑛 ∈ X (1 ≤ 𝑛 ≤ 𝑁 )   byte-addressable, persistent, and offers SSD-like capacity at a lower
+is a 𝑑-dimensional vector, and a threshold 𝜖 > 0, find all vector pairs       cost than DRAM. However, PM is significantly more expensive
+(𝑥𝑛 , 𝑥𝑛 ′ ) with ∥𝑥𝑛 − 𝑥𝑛 ′ ∥ ≤ 𝜖 and 1 ≤ 𝑛 ≠ 𝑛 ′ ≤ 𝑁 .                      ($12/GB) while delivering comparable read bandwidth (9 GB/s vs
+                                                                              7.4 GB/s) but lower write bandwidth (2.8 GB/s vs 6.9 GB/s). Although
+    In this paper (including Definition 1), we use the L-2 norm (Eu-          PM offers much lower latency (300ns vs 40µs), this advantage has
+clidean distance) as the similarity measure, but other similarity             minimal impact on end-to-end applications like similarity join.
+measures are also possible. The similarity-based self-join (SSJ) prob-        Thus, we study the case where the vector dataset is stored on SSD,
+lem may be extended to cross-join if we consider similar vector               while the memory is only a small fraction (e.g., < 20%) of the data.
+pairs (𝑥𝑛 , 𝑦𝑚 ) from two vector datasets X and Y. We assume that                 A baseline disk-based SSJ approach is to use disk-oriented vector
+the vector dimension 𝑑 is high (e.g., > 100), which is the common             indexes (e.g., DiskANN [48]), which target top-𝑘 nearest neighbor
+case for embedding models. Note that solving the SSJ problem ex-              queries: we first build an index on the data and then use each vector
+actly (i.e., finding all qualifying vector pairs with ∥𝑥𝑛 − 𝑥𝑛 ′ ∥ ≤ 𝜖) is    as a query to search the index. We gradually increase 𝑘 until the
+prohibitively expensive. This is because traditional distance-based           distances of the identified neighbors exceed 𝜖. Figure 1 shows that
+pruning techniques (e.g., using triangle inequality) are not effective        this approach is slow and disk access dominates the overall time,
+in high dimensions [29], and thus the problem almost degrades                 due to the large volume of disk traffic. Our analysis suggests that
+to a linear scan over the dataset X to find all 𝜖-neighbors of each           the poor performance boils down to two reasons: read amplification
+vector 𝑥𝑛 . As such, we solve SSJ approximately to trade accuracy             and repetitive access. In particular, disk-oriented indexes access an
+for efficiency. We can gain efficiency by reducing the number of              individual vector each time but a vector is usually smaller than the
+candidate vector pairs that are checked for 𝜖-neighbors; this reduc-          4KB disk page size (e.g., a 128-dimension float vector takes up 512B),
+tion may miss some vector pairs that should have been returned,               which is the minimum granularity of disk read.1 Thus, disk band-
+thus hurting recall. We use the standard definition for recall: If R          width is wasted on reading irrelevant data. Critically, this approach
+is the set of all vector pairs whose distance is less than 𝜖, then the        treats the vectors as independent queries and misses the opportu-
+                                                                  | R∩R ′ |
+recall of an approximate result set R ′ of vector pairs is: 𝑟 = | R | .       nities to share and reuse the data fetched from disk. For example,
+    Existing literature (see Section 2 for a detailed discussion), treats     vectors 𝑥𝑎 and 𝑥𝑏 may both need to check if 𝑥𝑐 is their 𝜖-neighbor.
+SSJ as an end-to-end task over a static dataset executed exclusively          If 𝑥𝑏 is processed right after 𝑥𝑎 , 𝑥𝑐 will reside in memory and can
+by a dedicated server or system, with the goal of minimizing the              be reused, leading to smaller disk traffic and shorter runtime.
+overall execution time. For example, RSHJ [61] conducts approx-               Our solution: DiskJoin. Motivated by this profiling analysis, we
+imate similarity join using LSH-based probing, where the entire               design a novel disk-based SSJ method, DiskJoin, that effectively
+join pipeline—from hashing to candidate generation to filtering—is            reduces disk access time and, in turn, significantly improves the
+optimized for overall performance. Similarly, distributed similarity          efficiency of SSJ processing. DiskJoin achieves this with two key
+join solutions like MAPSS [56], ClusterJoin [18], and C2Net [38]              designs: access batching and task orchestration.
+partition and process data in a way that tightly integrates filtering            Access batching addresses read amplification by reading sets of
+and verification stages, focusing on reducing total job runtime.              vectors (buckets), instead of one vector at a time. At a high level,
+    Our work is aligned with this line of research: we also treat SSJ as      DiskJoin organizes vectors in the dataset into buckets; each bucket
+a unified, end-to-end task over a static dataset. Thus, our objective is      is represented by a center vector and holds the vectors that are
+to gain efficiency (measured by end-to-end execution time), while             similar to the center vector. Using the bucket centers, DiskJoin then
+maintaining high recall. We do not need to separately consider                constructs a bucket graph, where each bucket is a node, and an edge
+precision, as incorrect candidate pairs with distances larger than 𝜖          connects two buckets if vectors in one bucket may have 𝜖-neighbors
+will be simply removed by checking their distances. Therefore, an             in the other bucket. Our method evaluates SSJs by processing one
+approximate solution to SSJ would always achieve perfect precision.           bucket at a time, retrieving all neighbors of that bucket in the bucket
+Scaling to large data sizes. In many applications, SSJ often in-              graph. By reading data at bucket granularity, instead of individual
+volves large datasets. For example, a public multi-modal dataset can          vectors, DiskJoin largely eliminates read amplification, as each
+provide billions of images and their text descriptions [46], a video          bucket contains multiple vectors and typically has size larger than
+website such as YouTube can also host billions of videos [4], and an          the page size. It is also conducive to sharing disk access, as vectors in
+e-commerce platform can have hundreds of millions of users [30].
+                                                                              1While some more recent embeddings have high dimensionality (e.g., 1536 for OpenAI’s
+Moreover, each individual vector may also be large due to the high
+                                                                              text embedding), dimensionality reduction techniques like the Matryoshka Represen-
+dimensionality 𝑑. As a result, vector datasets can take up TBs of             tation Learning (MRL) [37] and vector quantization methods [2, 23] can be used to
+storage and do not fit in the memory of a server. A way to scale up           compress the vector size to well below a page size without loss of accuracy.
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                       Conference’17, July 2017, Washington, DC, USA
+
+
+the same bucket are similar, and thus are likely to have 𝜖-neighbors        • We organize a review of the related work on similarity joins,
+in common. We make further system contributions through careful               highlighting the existing bottlenecks of huge disk traffic and long
+implementation to ensure that memory consumption stays below                  disk access time. [Section 2]
+budget when assigning the vectors to buckets, and that construction         • We provide the intuition and overview for our novel DiskJoin
+of the bucket graph is fast and incurs limited overhead.                      method for SSJ. DiskJoin reduces disk access drastically, through
+   Task orchestration further reduces disk access through more ef-            clever implementation of bucket-wise processing of SSJs. Through
+fective sharing of disk access and better-informed cache eviction             the key contributions of access batching and task orchestration,
+policy. It achieves this by choosing a processing order for buckets, to       DiskJoin allows for more sharing of disk data access and richer
+leverage that buckets processed consecutively can share the buckets           information for more effective cache management. [Section 3]
+loaded to memory (i.e., temporal locality). Identifying the optimal         • We model the problem of task orchestration as an edge-covering
+bucket ordering is NP-hard (Section 4.1). However, we leverage a              problem of the bucket dependency graph and show theoretical
+popular algorithm for classical graph ordering (which assigns IDs             results on its hardness. We proceed to provide practical heuris-
+to graph nodes, such that nodes with adjacent IDs share common                tics that leverage prior work on cache management and graph
+neighbors), as an approximation heuristic, and process buckets in             ordering, in a careful, memory-conscious implementation that
+the order of their new IDs. We note that for a given bucket pro-              performs task orchestration efficiently. [Section 4]
+cessing order, the bucket graph provides complete knowledge of              • We detail the optimizations that support the effectiveness of our
+the required bucket accesses. We choose Belady’s algorithm [6] to             bucketization model, allowing for clustering the vectors with
+manage the memory cache eviction as it is proven to maximize the              limited memory and pruning unnecessary vector similarity com-
+cache hit rate given perfect knowledge of future data access.                 putations. [Section 5]
+Similarity join vs vector similarity search. We note that sim-              • We experimentally evaluate our methods over three real-world
+ilarity self-join has different requirements from vector similarity           datasets of up to 1.4B vectors, and show that DiskJoin offers clear,
+search (VSS) [21, 31, 40]. VSS is an online task with stringent latency       consistent, and up to 3-orders-of-magnitude improvement over
+requirements for each query (e.g., 10ms). VSS cannot collect many             the prior state of the art. [Section 6]
+queries within the latency budget period, and thus the opportu-
+nities for the joint optimizations of multiple queries are limited.         2    Related Work
+In contrast, SSJ is an offline batch processing task that focuses on        Similarity join (both self-join and cross-join) is a classical prob-
+end-to-end time. As such, DiskJoin batches the processing of vec-           lem that has been extensively studied for data types including
+tors that check the same 𝜖-neighbors and obtains the data access            strings [12, 43, 44, 53, 60], sets [3, 8, 12, 53], and vectors [7, 9, 15, 20,
+pattern beforehand for orchestration. These designs make DiskJoin           22, 33, 38, 57]. The general solution is a two-step filter-verify proce-
+fundamentally different from disk-based indices for VSS [48, 55].           dure, where the filter step generates a set of candidate pairs, and the
+   Some recent research explores filtered vector similarity search by       verify step checks the candidate pairs via similarity computation.
+integrating attribute filtering into the index. For instance, Filtered-     While the verify step is straightforward, the filter step is crucial for
+DiskANN [25] builds a graph whose edges respect both geometric              accuracy and efficiency by excluding dissimilar pairs and keeping
+proximity and shared attribute labels. SeRF [66] overlays range-            similar pairs. Many filtering techniques have been proposed, in-
+specific subgraphs to support filtering over value ranges. NHQ [54]         cluding those targeting generic metric spaces [9, 13, 15, 18, 20, 56]
+constructs a composite graph index to enable joint pruning on               as well as techniques tailored to specific data types [3, 22, 60].
+vector and attribute similarity. We are, however, not aware of any          Similarity join for strings and sets. Prefix filtering is a dominant
+research on filtered vector similarity join. While our work focuses         technique for set and string similarity joins. Consider sorted sets
+on the standard setting of vector SJ—without attribute filtering—           𝑟 and 𝑠, and denote their length-(|𝑟 | − 𝑡 + 1) prefixes as P(𝑟, |𝑟 | −
+we briefly discuss how our approach can be extended to support              𝑡 + 1) and P(𝑠, |𝑟 | − 𝑡 + 1); if 𝑟 and 𝑠 have more than 𝑡 common
+attribute filtering in Section 3.                                           elements, it holds that P(𝑟, |𝑟 | − 𝑡 + 1) ∩ P(𝑠, |𝑟 | − 𝑡 + 1) ≠ ∅. Using
+Summary of evaluation and results. We evaluate DiskJoin on                  this property, SSJoin [12] generates candidate pairs by considering
+three real-world datasets that contain up to a billion vectors and          objects whose prefixes have common elements, and can handle
+limit the memory size to a small portion of the dataset size (e.g., 10%).   both sets and strings. AdaptJoin [53] improves prefix filtering by
+The results show that compared with searching a disk-oriented vec-          selecting the first |𝑟 | − 𝑡 + 𝑙 elements as the prefix and filtering out
+tor index, DiskJoin is 2–3 orders of magnitude faster. As suggested         object pairs whose prefixes share fewer than 𝑙 common elements; 𝑙 is
+by the results in Figure 1, this is because DiskJoin significantly          selected to balance the costs of filtering and verification. GPJoin [8]
+reduces disk traffic and hence disk access time. Moreover, Figure 1         groups identical prefixes for sets and executes filtering in batches.
+shows that disk access no longer dominates the running time for             MGJoin [44] reduces the number of candidates by using multiple
+DiskJoin. Our experiment suggests that the designs of DiskJoin              prefixes with different lengths for each string during filtering.
+are effective at improving cache hit rate and reducing disk access.         Similarity join for low-dimensional vectors. Space-partitioning
+Specifically, Belady’s algorithm and bucket ordering improve the            indices can prune dissimilar vectors in low dimensions (e.g., 𝑑 < 10).
+cache hit rate by about 20% and 50%, respectively.                          For example, tree-based variants, such as R-tree [9], 𝑀-tree [15]
+Contributions and outline. We make the following contributions.             and 𝑒𝐷-tree [20], partition the space hierarchically. Search for 𝜖-
+                                                                            neighbors recurses from the root and uses the triangle inequality to
+                                                                            prune tree branches that are unlikely to contain qualified neighbors.
+Conference’17, July 2017, Washington, DC, USA                                                           Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+Some algorithms use the 𝜖-grid (e.g., EGO [7], EGO-star [33], Su-             pioneered memory-SSD hybrid similarity search by introducing
+perEGO [32]), which splits the space into 𝜖-sized grids and sorts the         a multi-store IVF-based framework, where the in-memory index
+vectors by the lexicographical order of their grid coordinates. Then,         quickly routes queries to nearby clusters and completes valida-
+the vectors are grouped into parts, and two parts are checked if              tion by accessing the SSD store. SPANN [14] adopts similar design
+their 𝜖-margin bounding boxes intersect. Space-partitioning indices           but optimizes the IVF index construction to better suit the disk
+do not work for high-dimensional vectors (e.g., 𝑑 > 100) produced             scenario. DiskANN [48] proposes a graph-based approach, using
+by machine learning models, as the pruning power of the triangle              compressed vectors for in-memory graph traversal and refining
+inequality and bounding boxes diminishes in high dimensions [29].             results with full-precision vectors stored on SSDs. Other systems,
+Similarity join for high-dimensional vectors. RSHJ [61] con-                  such as SmartANNS [50] and ES4D [36], also explore the opportu-
+ducts similarity cross-join for two vector datasets X and Y and               nity for near-data processing, which offloads the query processing
+uses locality-sensitive hashing (LSH) [28], a popular technique for           to SSDs equipped with computational capabilities.
+vector similarity search in high dimensions. It assumes that X and            Batch Processing. DiskJoin leverages batch processing, which is
+Y reside in memory and produces an approximation (i.e., identifies            a widely-used concept in database research. SharedDB [24] first
+most, instead of all similar pairs) like we do. LSH uses tailored hash        introduced the design of batching queries in RDBMSs to share
+functions to map vectors to buckets ensuring that similar vectors             data access and computation. This concept was later extended to
+are more likely to be mapped to the same bucket. RSHJ builds hash             vector similarity search in [45]. Query batching is especially com-
+tables for both datasets and generates candidate pairs by querying            mon in GPU-based similarity search systems—such as GGNN [26],
+the hash table of Y using vectors in X. To reduce lookup cost, it only        SONG [65], and BANG [34]—to fully exploit the massive paral-
+uses a representative subset of X for lookups. However, state-of-the-         lelism of GPUs. Other systems, including FreshDiskANN [47] and
+art vector indices, such as proximity graphs [40, 41, 48] and inverted        IP-DiskANN [62], also employ batch processing for index updates
+file (IVF) [31], perform much better than LSH for similarity search.          to amortize operational overhead.
+Distributed similarity join. Some prior work scales up similarity
+join with distributed frameworks like MapReduce [19]. MAPSS [56]
+first selects a set of centroids and then partitions the dataset ac-          3   DiskJoin Overview
+cording to the centroids. The mappers use the triangle inequality to          In this section, we provide an overview of DiskJoin’s workflow,
+filter the candidate objects for each partition, and each reducer ver-        depicted in Figure 2. DiskJoin takes as input the vector dataset X,
+ifies the candidate pairs for a partition. ClusterJoin [18] improves          the memory budget 𝐶, the distance threshold 𝜖 for similar vector
+MAPSS by pruning the candidate pairs with a bisector-based filter             pairs, and a target recall 𝜆. Under the assumption that X resides on
+in general metric spaces, as well as a set of filters specific to different   local disk, DiskJoin will identify and write a set of similar vector
+distance functions. It achieves load balancing by re-partitioning the         pairs R ′ to disk, such that the expected recall of R ′ is 𝜆 and memory
+datasets over the machines. Chen et al. [13] further enhance candi-           usage is bounded by 𝐶. The core of DiskJoin is the bucket-wise
+date filtering using pivot filtering and plane sweeping techniques            processing of SSJ. It first groups X into buckets, such that each
+and propose two partitioning methods based on space-filling curve             bucket contains similar vectors. Then, it identifies candidate bucket
+and KD-tree to avoid re-partitioning. More recently, C2Net [38]               pairs that may contain neighboring vectors. Finally, for each candi-
+applies an LSH variant, C2LSH [22], to conduct similarity-based               date bucket pair, it performs pairwise vector comparisons across
+vector cross-join by hashing both datasets to buckets. The mappers            the buckets to produce the final results. For this approach to be
+enumerate the vector pairs mapped to the same bucket, and the                 effective, the algorithm needs to be smart about the bucketization,
+reducers aggregate the pairs to calculate their collision counts. A           the identification of likely dependencies across buckets, and the pro-
+vector pair is regarded as a candidate if their collision count ex-           cessing order of buckets. This provides three benefits: (1) it avoids
+ceeds a threshold. These distributed solutions generally suffer from          read amplification, as the vectors are read from disk at bucket gran-
+a high inter-machine communication cost because similar object                ularity; (2) data access is shared among the vectors in the same
+pairs need to be sent to the same machine for verification.                   bucket because they are similar and hence are likely to have high
+    To the best of our knowledge, DiskJoin is the first to conduct            overlap in their 𝜖-neighbors; (3) understanding the dependencies
+similarity join for high-dimensional vectors on disk. Compared                across buckets (i.e., which buckets are likely to contain 𝜖-neighbors)
+with existing vector similarity join work (e.g., EGO, RSHJ, C2Net)            allows for advanced memory cache management. We provide here
+that use tree, grid, or LSH, DiskJoin leverages state-of-the-art vector       an overview of these key components in DiskJoin, and describe
+indices (i.e., proximity graph and IVF), which are more efficient             them in detail in subsequent sections.
+for high-dimensional vectors. Compared with distributed solutions,            Vector bucketization. DiskJoin partitions X into buckets, with
+DiskJoin is easier to deploy (as it does not require a cluster) and does      each bucket 𝑏 represented by a center vector 𝑐𝑏 and containing
+not suffer from high inter-machine communication cost. DiskJoin               similar vectors. Traditional clustering methods, such as k-means,
+also follows the general filter-verify procedure for similarity join          are not suitable for this task, due to high memory requirements—
+but the main challenge is to reduce the disk access cost, which has           often, they need the entire dataset to fit in memory, but, in practical
+not been explored by existing work.                                           settings, the memory size 𝐶 is much smaller than the dataset size.
+Disk-based Similarity Search. Prior work has explored disk-based              DiskJoin implements an efficient bucketization procedure (detailed
+vector similarity search systems to support billion-scale vector re-          in Section 5.1). At a high level, it starts with a random selection of
+trieval with low memory footprints and high throughput. GRIP [63]             vectors to serve as the bucket centers, and then assigns each vector
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                                                              Conference’17, July 2017, Washington, DC, USA
+
+
+ CPU                                   CPU Vector Bucketing                    Dependency Identification             CPU                         cache       1 bucket read        2 cache hit
+ Configurations                                                                        1           2                             D           F               A            F            A                B
+                                                              4                                                          3       E
+                                                                                                                                         4   H
+                                                                                                                                                         1   C
+                                                                                                                                                                  4       H
+                                                                                                                                                                                   1   C
+                                                                                                                                                                                                2       G
+       Memory budget: C                       1
+       Distance threshold: 𝜀                                                                                         Task Orchestration and Execution                 1
+       Target recall: 𝜆        Input                              3                                        Execute
+                                                      2                                3           4                        3       4             4                                    1            2
+                                                                                                                                                                      2
+ Disk
+   A        B      C      D            Disk                                                                          Disk
+                                                  A       C           B   G    D   E       F   H                             D       E             F     H                B   G            A        C
+   E        F      G      H
+
+
+          Vectors                                                 Vectors in Buckets                                                                     Vectors in Buckets
+         (a) Inputs                     (b) Vector Bucketing and Dependency Identification                                                   (c) Task Orchestration and Execution
+Figure 2: Workflow of DiskJoin. Numbers (e.g., 1 and 2) indicate buckets, and letters (e.g., A and B) indicate vectors. (a) The
+inputs are the vector dataset and task configurations; (b) the vectors are grouped into buckets, and a bucket graph is constructed,
+where an edges means that the vectors in one bucket needs to check another bucket for neighbors; (c) task orchestration decides
+a good processing order for the edges in the bucket graph to reduce cache miss, where the cache can hold 2 buckets.
+
+to the nearest center. Each bucket also records a radius 𝑟𝑏 , which is                                 access; thus, we use Belady’s algorithm [6] for cache management
+the maximum distance between its vectors and the center.                                               (Section 4.2), which has been proven to yield the minimum total
+   DiskJoin also adjusts the disk layout of the dataset by storing                                     cache misses when data access is known. To solve task ordering,
+the vectors of each bucket consecutively (Figure 2b). This allows                                      we leverage graph reordering methods. The intuition is that buckets
+for fetching each bucket via sequential disk reads. A naive imple-                                     that have a large overlap in their neighboring buckets should be
+mentation of reorganizing the disk layout that uses random reads                                       processed consecutively for temporal cache locality (Section 4.3).
+to retrieve the vectors for each bucket and then writes them back                                      Task execution. Task orchestration generates the processing order
+to disk would cause read amplification. We instead implement a                                         of the edges and the buckets to load to and evict from the cache
+more efficient, sequential-disk-access method that does not violate                                    memory at every step. During execution, our method evaluates
+the memory budget (Section 5.1).                                                                       the distances of vector pairs from two buckets each time via in-
+Dependency identification. DiskJoin constructs a bucket graph                                          memory computation to check the 𝜖-neighbors for the vectors in
+that indicates, for each bucket 𝑏, which other buckets contain vec-                                    each bucket, and follows the task orchestration to load and evict
+tors that need to be checked for potential 𝜖-neighbors. In particular,                                 buckets. The resulting 𝜖-similar vector pairs are written to disk.
+after vector bucketization, we have the center and radius of the                                       Extending to cross-join. DiskJoin can be extended to process
+buckets in memory (i.e., 𝑐𝑏 and 𝑟𝑏 for bucket 𝑏). Using the triangle                                   the cross-join for two vector datasets with the following changes.
+inequality, bucket 𝑏 𝑗 may contain 𝜖-neighbors of bucket 𝑏𝑖 if:                                        (1) Vector bucketing is conducted separately for the two datasets,
+                      ∥𝑐𝑏𝑖 − 𝑐𝑏 𝑗 ∥ − 𝑟𝑏𝑖 − 𝑟𝑏 𝑗 ≤ 𝜖.              (1)                                 generating their own buckets. (2) The bucket graph becomes a bi-
+    Since the triangle inequality has poor pruning power in high-                                      partite graph, with the buckets of one dataset requiring the buckets
+dimension spaces, each bucket will have many candidate neigh-                                          of the other dataset. (3) During task orchestration, we use graph
+boring buckets. Inspired by [64], we adopt the probabilistic bucket                                    reordering to decide the processing order of the buckets from the
+pruning rule (Section 5.2), which meets the target recall 𝜆 while                                      larger dataset, the memory cache to hold buckets from the smaller
+pruning many more candidate buckets. We denote the bucket graph                                        dataset, and Belady’s algorithm to manage cache eviction. The
+as 𝐺 (𝑉 , 𝐸), where each bucket 𝑏 ∈ 𝑉 is a node, and a directed edge                                   other way, i.e., reordering the smaller dataset and caching the larger
+𝑒𝑖 𝑗 ∈ 𝐸 if bucket 𝑏𝑖 and 𝑏 𝑗 are a candidate bucket pair and 𝑖 < 𝑗.                                   dataset, is less efficient. This is because the reordered dataset only
+We do not record edges with 𝑖 > 𝑗 because Euclidean distance is                                        needs to be streamed to the memory once while the cached dataset
+symmetric, i.e., by computing the distances of the vectors in 𝑏𝑖 to                                    will experience bucket loading and eviction. Our experiments show
+the vectors in 𝑏 𝑗 , we also obtain the distances from 𝑏 𝑗 to 𝑏𝑖 .                                     that the disk traffic can be several times the dataset size.
+Task orchestration. The edges of the bucket graph identify all                                         Extending to attribute filtering. DiskJoin can be extended to sup-
+pairs of buckets that need to be processed together to identify 𝜖-                                     port attribute filtering with a simple modification: before perform-
+neighbors. A task refers to the processing of an edge (i.e., bucket                                    ing pairwise vector comparisons between candidate bucket pairs,
+pair). SSJ completes when all edges are processed. The order of                                        apply the attribute filter to each vector to generate a bitmap, and
+processing the edges is critical for cache hit rate, which in turn                                     skip similarity computations for vectors that do not pass the filter.
+determines IO cost and impacts efficiency, as a bucket needs to                                        If the attribute filter satisfies the range-preserving property—that is,
+be loaded from disk upon cache miss. For example, if edge 𝑒 𝑗ℎ is                                      the filtered results form a contiguous block in the lexicographical
+processed after 𝑒𝑖 𝑗 , it will not incur a cache miss for bucket 𝑏 𝑗 , as 𝑏 𝑗                          order of attribute values—further optimization is possible. Specifi-
+will already reside in memory. We define the problem of identifying                                    cally, during vector bucketization, vectors within each bucket can
+the bucket load sequence to process all edges with minimum cache                                       be sorted by the attributes’ lexicographical order. As a result, during
+misses and show that it is NP-hard (Section 4.1). We then propose a                                    task execution, only the vectors that satisfy the filter need to be
+heuristic approximation that decomposes it into two sub-problems:                                      loaded from disk, using a single sequential read.
+optimal cache management and task ordering. For a given task
+order, the bucket graph provides complete knowledge of future data
+Conference’17, July 2017, Washington, DC, USA                                                                                        Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+4     Task Orchestration                                                                             sequence L(A) L(B)                  E(A) L(C)         E(B) L(A)     E(C) L(D)            E(A) L(B) E(B) L(C)
+
+
+In this section, we describe how DiskJoin determines the processing         A                B
+order of bucket pairs and how it handles cache management during                                     memory                  A   B           B   C           C   A            A       D           D   B           D   C
+
+execution. At this stage, we assume a known bucket graph; we
+                                                                            C                D
+describe the bucketization and graph construction in Section 5. We                                                       A           B   A           B     A         B    A               B   A           B   A           B
+
+start by defining the problem of covering all graph edges with mini-                                  graph
+                                                                                                                         C           D   C           D     C         D    C               D   C           D   C           D
+mum cache misses, and show that it is NP-hard. We then propose an
+approximation heuristic that decomposes it into the sub-problems           Figure 3: An example of the minimum edge covering with
+of cache management (Section 4.2) and task ordering (Section 4.3).         cache (MECC) problem, the graph is in the left plot, the cache
+                                                                           size is 2, and 𝐿(·) and 𝐸 (·) mean load and evict a node, respec-
+4.1     Edge Covering with Cache Constraints                               tively. The dotted lines show the edges covered in each step.
+We assume a bucket graph 𝐺 = (𝑉 , 𝐸), where each node 𝑣 ∈ 𝑉 is
+a bucket, and an edge (𝑢, 𝑣) ∈ 𝐸 indicates that buckets 𝑢 and 𝑣 may
+contain vectors that are 𝜖-close. To compute the distance of vectors                                                                             1       Cache eviction           1       Disk read
+in the bucket pair (𝑢, 𝑣), both 𝑢 and 𝑣 have to be in memory. We as-                     5                           2
+sume that all buckets are of the same size, and, with slight abuse of                                                                1               5           6                    2               4               4
+                                                                                                                                          1                 5             6                   2               3
+notation, we use 𝐶 to denote the number of buckets that fit in mem-             1                        4                           5               6           2                    4               3               5
+ory. To perform SSJ, we need to process all edges of the bucket graph,                                                                       2              4             3                   5               6
+                                                                                                                                     6               2           4                    3               5               6
+                                                                                         6                           3
+and the goal is to minimize the disk access cost, which corresponds
+                                                                                    (a) Bucket graph                                                     (c) Cache using LRU
+to minimizing the number of bucket load operations. We define the
+minimum edge cover with cache (MECC) problem as follows.
+                                                                                                                                             1              5             5                   5               4
+                                                                                     5           4           4           5                           1           2                    6               5
+Definition 2 (MECC: Minimum Edge Cover with Cache). Assume                      1        2           3           4
+                                                                                                                                             5              6             6                   4               3
+                                                                                                                                                     2           4                    3               6
+a given undirected graph 𝐺 = (𝑉 , 𝐸) and an initially-empty cache                   6                                    6                   6              2             4                   3               6
+
+with capacity 𝐶. The cache supports two operations: load(𝑣), which
+                                                                                     (b) Task order                                                  (d) Cache using Belady’s
+loads node 𝑣 to the cache, and evict(𝑣), which evicts node 𝑣 from the
+cache following a given policy 𝑃 when the cache is full and needs to
+                                                                           Figure 4: An example for Belady’s algorithm. The edge pro-
+load a node. An edge of (𝑢, 𝑣) ∈ 𝐺 is said to be covered if both 𝑢 and 𝑣
+                                                                           cessing order is in (b), the cache size is 3, LRU loads 8 buckets
+are present in the cache at the same time. The Minimum Edge Cover
+                                                                           while Belady’s algorithm loads 7 buckets.
+with Cache problem seeks to find the sequence of load operations with
+the minimum length that covers all edges of 𝐺.
+                                                                           an independent set of size 𝑇 in 𝐺. We create a load sequence of
+   We note that edge direction in bucket graphs simply implies that        length |𝑉 | that loads the nodes 𝑉 \𝑉𝑇 first into the cache, followed
+each pair of buckets needs to be processed once, but directionality        by the nodes in 𝑉𝑇 . When executing this load sequence, nodes
+is not relevant to the covering problem. Thus, we consider 𝐺 to            𝑉 \𝑉𝑇 will take up |𝑉 | − 𝑇 slots in the cache, leaving one free slot.
+be undirected in this discussion. Without loss of generality, we           Each subsequent node in 𝑉𝑇 , is loaded into that slot, and, after
+assume that 𝐺 is connected—disconnected components can simply              being processed, gets evicted (based on LIFO) to load the next node.
+be handled independently of each other. The length of the node             Since the nodes in 𝑉𝑇 form an independent set, there are no edges
+load sequence corresponds to the number of buckets loaded from             between them. All edges in 𝐸 are either among nodes in 𝑉 \𝑉𝑇 ,
+disk to memory, and thus MECC minimizes the disk access cost.              which are together in the cache, and thus are covered, or between
+The minimum possible length of the load sequence is |𝑉 |, as each          a node in 𝑢 ∈ 𝑉𝑇 and nodes in 𝑉 \𝑉𝑇 , which are covered when 𝑢 is
+node needs to be loaded at least once. Figure 3 shows an example of        loaded. Thus, this sequence covered all edges in 𝐺.
+MECC, where the graph has 4 nodes, the cache capacity is 2, and the            Conversely, we also show that if the MECC instance can be
+length of the minimum load sequence is 7. The MECC in Figure 3             solved with exactly |𝑉 | node loads (so every node is loaded once)
+is easy to solve because two subsequently-checked edges share at           and a cache size of |𝑉 | − 𝑇 + 1 using LIFO, the set of evicted nodes
+most 1 bucket. However, MECC becomes difficult in general cases.           form an independent set of size 𝑇 . This is because any two evicted
+                                                                           nodes are never present in the cache at the same time, and if any
+Theorem 1. The MECC problem is NP-hard.
+                                                                           edges existed between them they would not have been covered.
+   Proof. We show that the decision version of MECC can be re-                 Since IS is NP-hard, and IS reduces to MECC in polynomial time,
+duced from independent set (IS), which, given a graph 𝐺 = (𝑉 , 𝐸)          it follows that MECC is also NP-hard.                               □
+and an integer 𝑇 , asks whether there exists a set 𝑉 ′ ⊆ 𝑉 such that
+|𝑉 ′ | = 𝑇 and 𝑢, 𝑣 ∈ 𝑉 ′ such that (𝑢, 𝑣) ∈ 𝐸. Given an instance of         We note that this hardness result is specific to self-joins. Cross-
+IS with connected graph 𝐺 (𝑉 , 𝐸) and integer 𝑇 , we construct an          joins are likely simpler, since their bucket graph is bipartite. Self-
+instance of MECC with the same graph 𝐺 (𝑉 , 𝐸) and a cache of size         joins are generally harder, and our algorithms can also be used
+𝐶 = |𝑉 | − 𝑇 + 1 with last-in-first-out (LIFO) as the eviction policy 𝑃.   in the evaluation of cross-joins, as discussed in Section 3. How-
+   We first show that if 𝐺 has an independent set of size 𝑇 , the          ever, it is possible that cross-joins offer additional opportunities for
+solution of MECC is a load sequence of length |𝑉 |. Let 𝑉𝑇 ⊆ 𝑉 be          improvements; we leave this direction to future work.
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                               Conference’17, July 2017, Washington, DC, USA
+
+
+Algorithm 1 Cache Management via Belady’s Algorithm                                    Algorithm 1 shows how DiskJoin implements Belady’s algorithm.
+Input: Bucket read sequence 𝑆, bucket number 𝑀, cache size 𝐶                       We use a max-heap Q to manage the cache-resident buckets, and
+ 1: Bucket queue Q ← Max_Heap(𝐶 )                                                  each element of the heap is a key-value pair, where the key is the
+ 2: Bucket position 𝑃 ← Array(𝑀, List())                                           bucket id and the value is the index of the bucket’s subsequent access
+ 3: Bucket access count 𝑐 ← Array(𝑀, 0)                                            in the bucket access sequence. Q can hold 𝐶 elements, with 𝐶 being
+ 4: for 𝑖 ∈ {1 · · · |𝑆 | } do               ⊲ Store access time for each bucket   the capacity of the cache. DiskJoin also uses a two-dimensional
+ 5:     𝑃 [𝑆 [𝑖 ] ].append(𝑖 )                                                     array P to record when each bucket will be accessed, and each
+ 6: for 𝑖 ∈ {1 · · · |𝑆 | } do             ⊲ Enumerate bucket access sequence
+                                                                                   row, P[𝑏], records the indices in the bucket access sequence for
+ 7:    𝑏 ← 𝑆 [𝑖 ], 𝑐 [𝑏 ] ← 𝑐 [𝑏 ] + 1
+                                                                                   bucket 𝑏. A counter array c records how many times each bucket
+ 8:     if Cache.find(𝑏 ) = true then                                ⊲ Cache hit
+ 9:         Q.update(𝑏, 𝑃 [𝑏 ] [𝑐 [𝑏 ] ] )                                         has been accessed until now. Algorithm 1 fills in the index array P
+10:     else                                                       ⊲ Cache miss    by enumerating the bucket access sequence 𝑆 (lines 4–5). Then, the
+11:         if Q.size = 𝐶 then                                                     algorithm handles access one bucket at a time (lines 6–13). If the
+12:               b′ ← Q.pop( ), Cache.evict(𝑏 ′ )                                 required bucket 𝑏 is in the cache (i.e., Cache.find(𝑏) = true), we
+13:         Cache.load(𝑏 ), Q.push(𝑏, 𝑃 [𝑏 ] [𝑐 [𝑏 ] ] )                           simply update the index of the bucket in the max-heap Q (line 9). If
+                                                                                   the bucket is not in the cache and the cache has free slots, we load
+    As MECC is NP-hard, we solve it approximately by decomposing                   the bucket and add its entry to Q (line 13). If the cache is full, we
+it into two sub-problems.                                                          choose the bucket 𝑏 ′ with the largest next access index and remove
+                                                                                   it from both Q and the cache (line 12). Algorithm 1 scans 𝑆 over
+• Given a processing order of the edges, we examine the cache eviction
+                                                                                   two passes, and the worst-case complexity is 𝑂 (|𝐸| log 𝐶), since
+    policy that minimizes the number of bucket loads. We show that
+                                                                                   |𝑆 | = 2|𝐸| and the size of the heap Q is 𝐶.
+    this can be solved optimally using Belady’s algorithm for cache
+    management in Section 4.2.
+• We examine how to derive a good processing order for the edges to                4.3    Task Ordering via Graph Reordering
+    achieve a small number of bucket loads. We solve this heuristically,
+    using a lightweight graph reordering algorithm in Section 4.3.                 Now we revisit the issue of determining the processing order of the
+                                                                                   edges in 𝐺 (𝑉 , 𝐸). Given a bucket node 𝑣 ∈ 𝑉 , let N (𝑣) be the set
+                                                                                   of 𝑣’s out-neighbors, i.e., N (𝑣) = {𝑢 : (𝑣, 𝑢) ∈ 𝐸}. There are |N (𝑣)|
+4.2     Cache Management via Belady’s Algorithm
+                                                                                   edges between 𝑣 and N (𝑣), and they all share bucket 𝑣. The first
+Assume that the processing order for the edges in 𝐺 (𝑉 , 𝐸) has been               intuition applied in our heuristic is to process all of 𝑣’s outgoing
+decided as {𝑒𝑢𝑣 , · · · , 𝑒𝑢 ′ 𝑣 ′ }, we can deduce the access sequence            edges in succession. This ensures that at least one bucket for each
+of the buckets as 𝑆 = {𝑢, 𝑣, · · · , 𝑢 ′, 𝑣 ′ } by extracting the buckets          task will not incur a cache miss. When the cache size is 𝐶 ≥ 2, this
+connected by each edge. 𝑆 has a length of 2|𝐸| and specifies when                  reduces the worst-case cache miss count from 2|𝐸| to |𝑉 | + |𝐸|. As
+each bucket will be used for computation. The cache can keep 𝐶                     |𝐸| is usually much larger than |𝑉 |, the reduction is close to 50%.
+buckets in memory. Given the bucket access sequence, our goal is                      Now, task ordering boils down to determining the processing
+to minimize the number of bucket loads with cache management.                      order of the nodes in 𝐺. While following the order of the node IDs
+    The cache load decision is straightforward, i.e., when checking                presents a straightforward solution, it may still incur a high number
+edge 𝑒𝑢𝑣 and a required bucket (e.g., 𝑢) is not in the cache, the bucket           of cache misses. For instance, Figure 5(b) shows that following
+should be fetched from disk. However, when 𝑢 needs to be loaded                    the ID order needs to load 8 nodes to the cache. In comparison,
+and the cache is full, we need to choose which bucket to evict from                Figure 5(c) shows that by processing node 4 before nodes 2 and 3,
+the cache. There are popular strategies such as first-in-first-out                 the number of loaded nodes can be reduced to 5. This is because
+(FIFO), least-frequently-used (LFU), and least-recently-used (LRU),                nodes 1 and 4 share common neighbors {5, 6}, and processing node
+with the latter often being the choice method in many practical                    4 immediately after node 1 can reuse {5, 6} in the cache.
+settings. However, these policies make eviction decisions based on                    The example in Figure 5 suggests that we should process nodes
+prior data access. What is special in our setting is that the bucket ac-           𝑢 and 𝑣 subsequently if the overlap between their neighbors, N (𝑢)
+cess sequence 𝑆 specifies all data access, including the future. Thus,             and N (𝑣), is high. This allows for the reuse of nodes already loaded
+we use Belady’s algorithm for cache management, which can lever-                   to the cache. More generally, denote the average out-degree of the
+age this information to minimize the number of cache misses [6].                   nodes in 𝐺 as 𝑑𝑎𝑣𝑔 , a cache with capacity 𝐶 can hold the neighbors of
+    Belady’s algorithm looks into future bucket access and evicts the              𝐶/𝑑𝑎𝑣𝑔 nodes. We should decide an ordering for the nodes in 𝐺 such
+bucket in the cache that will be accessed again at the latest point                that the nodes in a sliding window of size 𝑤 = 𝐶/𝑑𝑎𝑣𝑔 can share
+in the future. This minimizes the number of cache misses because,                  the most neighbors. Thus, we aim to maximize the following score.
+compared with the bucket chosen for eviction, the other buckets will                            ∑︁                              𝑛
+                                                                                                                               ∑︁       𝑖 −1
+                                                                                                                                        ∑︁
+be accessed sooner; thus, evicting any of these buckets would yield                 𝐹 (𝑃 ) =            | N (𝑢 ) ∩ N (𝑣) | =                   | N (𝑢 ) ∩ N (𝑣) |, (2)
+at least the same number of cache misses as evicting the chosen                           0<𝑃 (𝑣) −𝑃 (𝑢) ≤𝑤                    𝑖=1 𝑗 =max{1,𝑖 −𝑤}
+bucket. Figure 4 compares LRU with Belady’s algorithm with an                      where 𝑛 is the number of nodes and 𝑃 : [1, 𝑛] → [1, 𝑛] is an one-
+example. LRU (c) evicts bucket 𝑏 5 , which needs to be loaded again                to-one function that maps a node from its new id to original id. We
+later to process another edge. In contrast, Belady’s algorithm (d)                 will process the nodes following their new ids.
+evicts bucket 𝑏 2 because it will never be used again, and this keeps                 The formulation above resembles Gorder [57], a classical graph
+𝑏 5 in the cache and saves one future bucket load.                                 reordering algorithm that aims to improve the cache locality of
+Conference’17, July 2017, Washington, DC, USA                                                                                    Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+                                                                    ?       cache miss       ?       cache hit                                                cb1
+        5         2             1               2           3           4     5   6              1               4       2   3     5   6
+
+
+    1       4                                                                                                                                                  cb
+                                                                                                                                                 cb3                         cb2
+        6        3          1   5   6      2        4   3       4       4     5   6      1       5    6     4    5   6   2   4     3   4                            r
+
+(a) Bucket graph                (b) Original iteration schedule                          (c) Reordered iteration schedule                    (d) Candidate bucket pruning
+
+Figure 5: Given the bucket graph (a), the original task ordering (b) results in 8 cache misses in a cache that holds 3 nodes
+(rectangle box). The reordered schedule (c) reduces the cache misses to 6. In the illustration of candidate bucket pruning (d),
+bucket 𝑏 3 is pruned, and as a result, the neighbors in the white arc are missed.
+
+Algorithm 2 Task Ordering with Graph Reordering                                                      5.1     Efficient Vector Bucketization
+Input: Bucket graph 𝐺 (𝑉 , 𝐸 ), sliding window size 𝑤 = 𝑑𝑎𝑣𝑔            𝐶                            During vector bucketization, DiskJoin groups the vectors of the
+Output: An ordering 𝑃 for the nodes in 𝐺                                                             dataset X into buckets that contain similar vectors. Standard clus-
+ 1: select a node 𝑣 as the start node, 𝑃 [1] ← 𝑣                                                     tering approaches cannot be straightforwardly adapted for our
+ 2: 𝑉𝑅 ← 𝑉 (𝐺 )\{𝑣 }, 𝑖 ← 2                                                                          setting. For example, K-means would require a full disk dataset
+ 3: while 𝑖 ≤ 𝑛 do                     ⊲ Greedily insert remaining nodes to P                        scan per iteration for assigning points to clusters and updating the
+        𝑣𝑚𝑎𝑥 ← max𝑣 ∈𝑉𝑅 𝑖𝑗−1
+                            Í
+ 4:                            =max{1,𝑖 −𝑤} N (𝑃 [ 𝑗 ] ) ∩ N (𝑣)                                     centroids. This overhead across multiple iterations is impractical
+ 5:     𝑃 [𝑖 ] ← 𝑣𝑚𝑎𝑥 , 𝑖 ← 𝑖 + 1                                                                    in our memory-constrained setting. Here, we propose an efficient
+ 6:     𝑉𝑅 ← 𝑉𝑅 \{𝑣𝑚𝑎𝑥 }                                                                             3-step vector bucketization process that respects strict memory
+ 7: return 𝑃
+                                                                                                     constraints (e.g., 5% of the dataset size).
+                                                                                                         First, we select a set X ′ of randomly-sampled vectors as the
+in-memory graph processing. We use the greedy heuristic in Algo-                                     bucket centers. We first generate the ids of the vectors to sample and
+rithm 2 to conduct the graph reordering. In particular, to initialize,                               then stream the entire dataset over memory to collect the sampled
+we select the node with the largest number of out-neighbors as                                       vectors. If the vectors in X are already permuted, we may simply
+the first node (line 1). Then, in each step, we select the nodes from                                use the first |X ′ | vectors to save disk traffic. The number of centers
+the remaining node set 𝑉𝑅 that has the maximum overlap in its                                        and, hence, buckets is configured to be large (e.g., around 1‰ of the
+neighbors with the previous 𝑤 nodes in the sliding window (lines 2–                                  dataset size); this leads to small buckets and fine-grained space par-
+6). Calculating the overlap and selecting the maximum for every                                      titioning, which reduces the number of vectors each bucket needs
+iteration has a prohibitive time complexity: 𝑂 (𝑤 · 𝑑𝑚𝑎𝑥 · 𝑛 2 ) where                               to check for 𝜖-neighbors and, hence, disk traffic. A random sample
+𝑑𝑚𝑎𝑥 is the maximum out-degree of 𝐺. To resolve this, our imple-                                     is sufficiently representative of the dataset because the sample size
+mentation adopts a priority queue to keep track of the following                                     is large (e.g., a 1‰ sample of a billion-scale dataset still contains 1M
+score 𝑘 𝑣 for each node 𝑣 ∈ 𝑉                                                                        vectors). This step safely meets the memory constraint since it only
+                           𝑖 −1
+                           ∑︁                                                                        requires streaming the dataset and preserving 1‰ of it in memory.
+                𝑘𝑣 =                 N (𝑃 [ 𝑗]) ∩ N (𝑣)                                                  Then, we read a block of vectors from the disk each time to avoid
+                        𝑗=max{1,𝑖 −𝑤 }                                                               read amplification, and for each vector 𝑥 in the block, we search for
+which is the number of overlapping neighbors between 𝑣 and nodes                                     its nearest center 𝑐 in X ′ for bucket assignment. A brute-force scan
+in the current sliding window. We incrementally update only the 𝑘 𝑣                                  over X ′ for this purpose is expensive as X ′ is also a large vector
+of nodes 𝑣 that are influenced by 𝑣𝑜 and 𝑣𝑖 —the nodes going out of                                  dataset. As such, we construct an HNSW [40] on X ′ in memory,
+and into the window, respectively, while the window is sliding. The                                  which is one state-of-the-art index for vector similarity search (VSS),
+algorithm’s time complexity is 𝑂 ( 𝑢 ∈𝑉 (𝑑 + (𝑢) 2 )), where 𝑑 + (𝑢)
+                                     Í
+                                                                                                     and use 𝑥 as a query to search the HNSW to identify its nearest
+is the out-degree of 𝑢. Our evaluation shows that our optimized                                      center 𝑐. In particular, HNSW is a proximity graph index, where vec-
+implementation incurs little overhead, as 𝑑 + (𝑢) is usually not large.                              tors are the graph nodes and edges connect similar vectors. A VSS
+Putting the two components together. Task orchestration first                                        query is processed by a traversal on the proximity graph that moves
+runs graph reordering to determine the processing order of the                                       toward the neighbors with small distances to the query. HNSW can
+nodes, which induces a processing order of the edges. During task                                    be built with complexity 𝑂 (|X ′ |log|X ′ |), and process a VSS query
+execution, we follow the order to process the edges and use Algo-                                    with 𝑂 (log|X ′ |), which is much faster than linear scan. The mem-
+rithm 1 for cache management.                                                                        ory footprint of the HNSW index—including the vectors in X ′ and
+                                                                                                     the adjacency lists—is only about 2‰ of the dataset size. Therefore,
+                                                                                                     it comfortably fits within reasonable memory constraints.
+5       Bucketing Optimizations                                                                          We do not write 𝑥 immediately to 𝑏𝑐 (i.e., the bucket correspond-
+The core of DiskJoin relies on bucket-wise processing of SSJs. In                                    ing to center 𝑐) as each vector is usually smaller than the 4KB disk
+this section, we discuss how the partitioning of the vector dataset                                  page size and this causes write amplification. Instead, we keep an
+into buckets can be done effectively and efficiently, and detail our                                 in-memory buffer for each bucket, append its vectors to the buffer,
+pruning strategy when building the bucket graph.                                                     and flush the buffer to disk when it is full.
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                                                  Conference’17, July 2017, Washington, DC, USA
+
+
+Algorithm 3 Probabilistic Pruning for Candidate Buckets                             Name                                        Vectors               Dimensions             Size (GB)
+Input: Target recall 𝜆, candidate bucket list 𝐿 for bucket 𝑏                        Deep100M                               100,000,000                      96                      36
+Output: Pruned candidate bucket list 𝐿 ′
+                                                                                    BigANN100M                             100,000,000                     128                      48
+ 1: 𝐿 ′ ← 𝐿, sum ← 0
+                                                                                    SPACEV1B                              1,402,202,072                    100                     523
+ 2: for 𝑏𝑖 ∈ 𝐿 in descending order of distance to 𝑏 do
+ 3:     sum ← sum + arccos(min{𝑥𝑖 , 1} )                                            Figure 6: Summary statistics of the experiment datasets
+ 4:     if sum ≥ 1 − 𝜆 then                 ⊲ Stop when error exceeds 1 − 𝜆
+ 5:         break
+ 6:     𝐿 ′ ← 𝐿 ′ \{𝑏𝑖 }                                                                      DiskJoin      ClusterJoin         RSHJ        DiskJoin(DC)   ClusterJoin(DC)     RSHJ(DC)
+ 7: return 𝐿 ′                                                                                106                                                                                   1014
+
+
+
+
+                                                                                                                                                                                         Distance computation
+                                                                                              105                                                                    45304          1013
+                                                                                              104                                                                                   1012
+
+
+
+
+                                                                                    Time(s)
+                                                                                                                                            2168
+   Our vector bucketing procedure is time-efficient because it only                           103                   719                                                             1011
+                                                                                                                                                               239
+involves sequential disk accesses and requires minimal number                                 102                                      66                                           1010
+                                                                                                     9       9
+of disk dataset scans—one for centroids sampling, one for bucket                               10                                                                                   109
+                                                                                                                                                   N/A                       N/A
+                                                                                                1                                                                                   108
+assignment and one for writing buckets back to disk. It is also                                          100K                              1M                        10M
+                                                                                                                                       Dataset size
+memory-efficient since the minimum memory requirement is only
+2‰ of the dataset size, which can fit within any reasonable memory              Figure 7: Despite being a disk-based method, DiskJoin is order
+constraint. When it finishes, the vectors of X are stored as buckets            of magnitudes faster than Clusterjoin and RSHJ—the latter
+on disk. We note that the disk organization and the HNSW index                  failing to execute in larger data sizes. This is because DiskJoin
+on bucket centers are independent of the distance threshold 𝜖 and               performs orders-of-magnitude fewer distance computations.
+recall target 𝜆. They can be built once and reused across queries with
+varying distance thresholds and recall requirements. The HNSW                   where 𝑉 (·) is the volume of a high-dimension shape, 𝐴(𝑖) is the
+index for the centers is also used to build the dependency graph                arc between bucket 𝑏 and bucket 𝑏𝑖 . It has been shown by [64] that
+                                                                                𝛽 ( 𝑗) can be bounded by
+𝐺 (𝑉 , 𝐸) for the buckets. In particular, for each bucket 𝑏 with center
+                                                                                                     1 Γ(
+𝑐, we use 𝑐 as a query to search the HNSW and identify a set                                               𝑑 −1     𝑙                                 𝑙
+                                                                                                              2 )
+                                                                                                                   ∑︁                                ∑︁
+B𝑐 = {𝑏 1, 𝑏 2, · · · , 𝑏 𝐿 } of nearest centers (i.e., buckets). Then, we      𝛽(𝑗) ≤ 𝜋− 2                               arccos(min{𝑥 𝑖 , 1} ) = 𝜇         arccos(min{𝑥𝑖 , 1} )
+                                                                                                         Γ ( 𝑑2 ) 𝑖=𝑙 − 𝑗                           𝑖=𝑙 − 𝑗
+use a probabilistic pruning rule (discussed next) to determine the
+buckets that should be checked by 𝑏 for 𝜖-neighbors.                                                             1 Γ ( 𝑑 −1 )
+                                                                                 where 𝜇 = 𝜋 − 2                         2
+                                                                                                                                is a constant related to the dimension 𝑑,
+                                                                                                                    Γ ( 𝑑2 )
+                                                                                and Γ· is the gamma function. 𝑥𝑖 = 𝑑𝑏𝑟 𝑖 , where 𝑑𝑏𝑖 is the distance
+5.2     Probabilistic Pruning for Candidate Buckets                             from point 𝑐𝑏 to the line the boundary of 𝑏, 𝑏𝑖 . When 𝑥𝑖 > 1, 𝑏 and
+Using the triangle inequality in Eq. (1) to decide the candidate                𝑏𝑖 have no intersection, and thus does not contribute to the sum.
+buckets for each bucket 𝑏 will produce many candidate buckets.                     Algorithm 3 shows how to use Eq. (3) to prune the candidate
+This will result in high disk access and computation costs as each              buckets. Given a desired recall 𝜆, for each bucket 𝑏, we sort its
+bucket reads and checks many buckets. Inspired by [64], we use                  candidate buckets in decreasing order of their distances to 𝑏, and
+a probabilistic candidate bucket pruning method to reduce the                   take the sum of 𝑎𝑟𝑐𝑐𝑜𝑠 (𝑥) starting from the most distant bucket
+number of candidate buckets while meeting the recall target 𝜆.                  until the sum reaches the error bound 1 − 𝜆. We stop and prune the
+   Figure 5(d) illustrates the idea with a toy example. We are con-             buckets encountered so far.
+sidering bucket 𝑏 and have identified all the candidate buckets
+for verification, i.e., {𝑏 1, 𝑏 2, 𝑏 3 }, whose centers are plotted as black    6         Experimental Evaluation
+points. We also plot a ball with center 𝑐𝑏 and radius 𝑟 , which repre-          In this section, we present an extensive evaluation of DiskJoin,
+sents the 𝜖-neighborhood of bucket 𝑏. For each candidate bucket                 using three large vector datasets and three alternative baseline
+(e.g., 𝑏 1 ), we plot its boundary region with the 𝜖-neighborhood of            methods based on prior art. Our evaluation aims to answer the
+bucket 𝑏, which is a mid-vertical hyperplane as we assign each                  following questions:
+vector to its nearest center. We prune the candidate buckets in de-
+scending order of their distances to 𝑐𝑏 . As shown in the example,              • How efficient is DiskJoin compared to related prior art, when the
+if bucket 𝑏 3 is pruned, any 𝜖-neighbors in the white arc will be                 memory is small with respect to the dataset?
+missed. We assume that the vectors are uniformly distributed in                 • How do the task configurations (i.e., target recall, distance threshold,
+the hypersphere 𝐵(𝑐𝑏 , 𝑟 ), and estimate the percentage of missed                 and memory budget) affect the performance of DiskJoin?
+neighbors based on relative volume. We can keep pruning candidate               • How effective are our designs (i.e., Belady’s algorithm, task reorder-
+buckets until the estimate of missed neighbors reaches 1 − 𝜆.                     ing, and pruning) in improving the efficiency of DiskJoin?
+   More generally, assume that a bucket 𝑏 has 𝑙 candidate buckets,
+and we prune the 𝑗 furthest buckets from 𝑏. The percentage of                   6.1             Experimental Settings
+missed neighbors can be expressed as
+                            Ð                  Í𝑙                               Datasets. We use 3 datasets of varied characteristics. Deep100M (a
+                        𝑉 ( 𝑙𝑖=𝑙 − 𝑗 𝐴(𝑖))       𝑖=𝑙 − 𝑗
+                                                         𝑉 (𝐴(𝑖))
+               𝛽 ( 𝑗) =                      ≤                            (3)   subset of Deep1B [5]) is a vector dataset of image embeddings pro-
+                           𝑉 (𝐵(𝑐𝑏 , 𝑟 ))        𝑉 (𝐵(𝑐𝑏 , 𝑟 ))                 duced by the last fully connected layer of the GoogLeNet model [49];
+Conference’17, July 2017, Washington, DC, USA                                                        Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+
+
+Figure 8: We set memory to 10% of the dataset size and vary the target recall. DiskJoin is consistently 2-3 orders of magnitude
+faster than DiskANN. DiskANN cannot achieve 99% recall for Deep100M due to the approximation errors in vector compression.
+
+
+
+
+Figure 9: We set the target recall to 90% and vary the memory budget (from 5% to 20% of the data size). DiskJoin is 2-3 orders
+of magnitude faster than DiskANN. In low memory settings, DiskAnn may fail to achieve the target recall due to low vector
+compression accuracy.
+it contains 100M vectors with 96 dimensions. BigANN100M con-                experiments on the Deep100M and BigANN100M datasets, and the
+tains 100M vectors that are scale-invariant feature transform (SIFT)        second server for all experiments on the SPACEV1B dataset.
+descriptors of images, with 128 dimensions. SPACEV1B consists               Implementation. We implement DiskJoin as a separate engine,
+of more than 1.4 billion vectors of 100 dimensions, where each              independent from any RDBMSs. Future integration into RDBMS is
+vector is a document embedding produced by the Microsoft SpaceV             certainly possible, and our algorithms would easily translate in this
+Superior model. The dataset statistics are summarized in Figure 6.          context. To prevent interference of OS page caching, we enabled
+Baselines. To the best of our knowledge, no existing systems target         the O_DIRECT flag in all file manipulation operations.
+disk-based vector similarity join. Therefore, we use the following          Evaluation protocol. We are interested in the efficiency of vector
+prior art for related problem settings as baselines.                        similarity join and thus use the end-to-end execution time—which
+• DiskANN [48] is a popular state-of-the-art index for disk-based           includes any necessary index construction time (e.g., for DiskJoin
+  vector similarity search. As discussed in Section 1, we first build       and DiskANN)—as the main performance metric. We restrict the
+   a DiskANN index and then use each vector in the dataset as a             memory usage to be a small portion (e.g., 5%-20%) of the vector
+   query to search the index for 𝜖-neighbors. DiskANN is designed           dataset size for two purposes: (1) it ensures that the compared meth-
+   to search the top-𝑘 similar neighbors for a query, and we adjust         ods use the same amount of memory, enabling a fair comparison
+   the value of 𝑘 to control the recall for vector similarity join. Other   and (2) it allows us to emulate scenarios where vector datasets are
+   disk-based vector indexes (e.g., Starling [55]) may outperform           so large that they exceed available memory, which is common in
+   DiskANN for some datasets. However, the speedups they report             practice. By default, we use a memory that is 10% of the dataset
+   compared to DiskANN are modest. Given that DiskJoin demon-               size, configure the target recall as 𝜆 = 0.9, and set the distance
+   strates much more significant speedups over DiskANN (50x) for            threshold 𝜖 for similar vector pairs such that each vector has 100
+   similarity join, such disk-based vector index baseline alternatives      similar vectors on average.
+   do not alter our conclusions.
+• ClusterJoin [18] is a distributed similarity join solution. We im-        6.2    Comparison with ClusterJoin and RSHJ
+   plement a single-node in-memory version for fair comparison.             We first evaluate the performance of DiskJoin against the other simi-
+• RSHJ [61] is an in-memory vector similarity join solution using           larity join baselines. Figure 7 reports the execution time and number
+   locality-sensitive hashing (LSH).                                        of distance computations (DC) for DiskJoin, ClusterJoin, and RSHJ
+                                                                            on BigANN dataset subsets of varying sizes: 100K, 1M and 10M. As
+Platforms. We conduct the experiments on two AWS servers, one
+                                                                            ClusterJoin is an exact algorithm, we configure DiskJoin to achieve a
+server is equipped with a 48-core Intel Xeon Platinum 8375C CPU
+                                                                            recall of 99.5% for a fair comparison. The recall of RSHJ, despite our
+@ 2.90GHz, 96GB RAM, and 2 × 1.3TB NVMe SSDs, while the other
+                                                                            best efforts to tune its parameters, reaches only 97.6% and cannot
+server has a 72-core Intel Xeon CPU E5-2686 v4 @ 2.30GHz, 512GB
+                                                                            be improved further. The memory budget of DiskJoin is constrained
+RAM, and 8 × 1.8TB NVMe SSDs. We use the first server for all
+                                                                            to 10% of the dataset size. RSHJ fails to run on the 1M and 10M
+                                                                            datasets due to its prohibitive 𝑂 (𝑛 2 ) memory consumption. Despite
+                                                                            being a disk-based approach, DiskJoin significantly outperforms
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                                Conference’17, July 2017, Washington, DC, USA
+
+                                                                                                                      Deep100M
+                                                                                                600
+                                                                                                                                            1221.6
+
+
+
+
+                                                                                                                                                            Deep100M
+the in-memory ClusterJoin and RSHJ. RSHJ performs particularly
+
+
+
+
+                                                                                      Time(s)
+                                                                                                400
+poorly due to a sub-procedure with 𝑂 (𝑛 3 ) time complexity. Beyond                                                              620.2
+                                                                                                200         416.0   474.5
+that, the performance gap is primarily attributed to the substantial
+difference in the number of candidate pairs for distance compu-                                   0
+                                                                                                            0.04      0.05    0.065              0.09
+tation in the verification phase. Notably, the number of distance                                           (50)     (100)    (200)
+                                                                                                                       BigANN100M               (500)
+                                                                                                                          Threshold
+
+
+
+
+                                                                                                                                                            BigANN100M
+computations in DiskJoin grows linearly with dataset size, whereas                              4000                                            3654.0
+
+
+
+
+                                                                                      Time(s)
+ClusterJoin exhibits near-quadratic growth. Considering the high                                3000
+                                                                                                2000                             1804.9
+overhead of network communication and disk I/O in a MapReduce                                               861.4   1184.5
+                                                                                                1000
+environment, the distributed execution of CluserJoin is unlikely to                                0
+                                                                                                             8000    10000       12000          16000
+outperform DiskJoin, while incurring higher resource costs.                                                  (50)    (100)       (200)          (500)
+                                                                                                                          Threshold
+ Key takeaway: DiskJoin is significantly faster than in-memory            Figure 10: Execution time of DiskJoin increases as we increase
+ state-of-the-art methods for similarity join, because it reduces         the distance threshold 𝜖, but growth remains sublinear for
+ distance computation by orders of magnitude.                             settings up to 500 similar neighbors, on average.
+
+6.3      Performance under Varied Configurations
+                                                                                     300
+In this section, we evaluate the performance of DiskJoin with re-                    250
+
+
+
+
+                                                                           Time(s)
+                                                                                     200
+spect to all its parameters. We compare with DiskANN, which is                       150
+the only disk-based method in our baselines.                                         100
+                                                                                      50
+                                                                                       0
+Target recall. Figure 8 reports the execution time of DiskJoin and                                     1K           10K                   50K            100K
+DiskANN when changing the target recall. Note that the y-axis is                                                    Number of buckets
+in log scale. Since DiskANN usually can not finish execution within       Figure 11: The number of buckets affects the performance
+one day, we estimate its execution time by sampling a subset of           of DiskJoin over a subset of BigANN100M with 10M vectors.
+the vectors as queries. In particular, we randomly sample 1‰ of           The best time is achieved at around 1‰ of the data size.
+the vectors, and this yields 100K-1M vectors for the datasets, which
+make the sample sets sufficiently large for accurate time estima-         vectors for proximity graph traversal, and thus the compressed vec-
+tion. The execution time of DiskANN is omitted at 99% recall on           tors need to be accurate for good recall. DiskANN fails to reach 90%
+Deep100M because DiskANN uses Product Quantization (PQ) [31]              recall on Deep100M and Spacev1B when the memory constraint is
+to compress vectors and stores the compressed dataset in memory.          5% of the dataset size due to vector compression errors.
+Under our default 10% memory size constraint, DiskANN can not                We observe that DiskJoin is consistently 2-3 orders-of-magnitude
+reach a recall of 99% for Deep100M due to the approximation errors        faster than DiskANN. We observe diminishing performance gains
+introduced by vector compression.                                         when enlarging the memory constraint beyond 10%, i.e., the speedup
+   This experiment shows that DiskJoin significantly outperforms          of increasing memory size from 10% to 20% is much smaller than
+DiskANN for all datasets and target recalls. In particular, the speedup   increasing the memory size from 5% to 10%. As we will show in later
+of DiskJoin over DiskANN is 52× at the minimum and 1137× at               experiments, this is because at a memory size of 10% dataset size,
+the maximum (i.e., on Deep100M at a recall of 95%). As we will            DiskJoin’s execution time is dominated by computation rather than
+show later with detailed profiling, this is because DiskANN suffers       IO. Thus, further increasing the memory to reduce IO has a limited
+from long disk I/O time and computation time while DiskJoin’s             effect on overall execution time. This indicates a significant benefit
+optimizations for disk I/O and candidate pruning effectively reduce       of DiskJoin: it only needs a small amount of memory (with respect
+both IO and computation costs. Both DiskANN and DiskJoin run              to the dataset) to avoid making IO the bottleneck. For DiskANN, the
+longer to achieve higher target recalls. This is because DiskJoin         performance improvement is primarily attributed to the enhanced
+needs to check more bucket pairs, and DiskANN needs to search             accuracy of the compressed vectors. For example, on Deep100M,
+more neighbors for each query. However, the execution time of             increasing the memory from 10% to 15% of the dataset size results
+DiskANN increases faster than that of DiskJoin. For example, to           in a speedup of 1.86× due to more accurate compressed vectors.
+improve the recall from 80% to 99% for Spacev1B, execution time           However, increasing the memory from 15% to 20% has nearly no
+increases 4× for DiskANN but only about 2× for DiskJoin.                  reduction in execution time, as the vectors are already accurate, and
+Memory constraint. Figure 9 reports the execution time of DiskJoin        the additional memory is used to cache the proximity graph index.
+and DiskANN under varying memory constraints (from 5% to 20%              Distance threshold. In the next experiment, we vary the distance
+of the data size), for fixed target recall (90%). For DiskJoin, the       threshold 𝜖, so that each vector has 50, 100, 200 and 500 similar
+memory constraint determines the number of buckets that can be            neighbors, on average. Figure 10 shows that the execution time of
+cached in memory. For DiskANN, two factors affect its memory              DiskJoin increases more quickly for BigANN100M than Deep100M.
+consumption: the compression ratio of the PQ for approximate              This is in line with the results in Figure 8, i.e., when increasing the
+vectors and the portion of the proximity graph index that is cached       target recall, DiskJoin’s execution time grows slower for Deep100M
+in memory. We first select the PQ compression ratio that is closest       than BigANN100M, suggesting that finding neighbors is more diffi-
+to the memory constraint, and cache the proximity graph in the            cult in BigANN100M. Overall, growth remains sublinear for settings
+remaining memory. This is because DiskANN uses the approximate            up to 500 similar neighbors, on average.
+Conference’17, July 2017, Washington, DC, USA                                                                     Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+                                                                                                           DiskJoin1         DiskJoin2          DiskANN
+                                                                                     106
+                     28.7%     6.2%                65.1%                                                73126               73888               135433               137526
+                                                                                     105
+                                                                                     104                                                                 2451 2635
+
+
+
+
+                                                                           Time(s)
+                                                                                            1187 1341           1461 1690           1751 1948
+                            55.0%           4.6%       40.4%                         103
+                                                                                     102
+                                                                                      10
+
+                                                                                                80%                 90%                  95%                 99%
+Figure 12: Execution time breakdown of DiskJoin into three                                                                     Recall
+parts: bucketing, orchestration and execution.
+                                                                         Figure 13: Execution time of cross-join on two Deep
+                                                                         datasets of size 50M and 100M. DiskJoin1 denotes reorder-
+                                                                         ing the larger dataset and caching the smaller dataset, while
+                                                                         DiskJoin2 means the opposite.
+Number of buckets. Figure 11 shows the execution time on a 10M
+size subset of BigANN100M, when varying the number of buckets                        Fragmentation level               No. of extents          Execution time (s)
+used by DiskJoin as 0.1‰, 1‰, 5‰, and 1% of the dataset size.
+                                                                                              None                            536                        108.1
+DiskJoin achieves best performance when the number of buckets
+                                                                                             1024KB                          1579                        110.7
+is around 1‰ of the dataset size. With fewer buckets, the space                              128KB                           6530                        111.4
+partitioning is less fine-grained and thus produces more candidate                            16KB                          265565                       123.6
+pairs. Moreover, the number of buckets that can be cached decreases,
+leading to a higher cache miss rate and increased execution time.        Figure 14: Performance of DiskJoin is robust under moderate
+Conversely, when the number of buckets is large (e.g., 1%), the          fragmentation conditions, with some degradation only when
+average bucket size drops to around 100 vectors. Considering that        the number of extents becomes extremely large (at 16KB).
+bucket sizes are not evenly distributed, many buckets may occupy
+only a few pages or even less than a page, resulting in significant      execution time. However, the performance impact remains mini-
+read amplification and degraded I/O efficiency.                          mal at moderate fragmentation level (1024KB and 128KB) and only
+Execution time breakdown. Figure 12 reports the running time             becomes noticeable—still under a 10% slowdown—under severe
+of the three main phases for DiskJoin: bucketing, orchestration, and     fragmentation. This is due to the fact that SSDs do not physically
+execution. Bucketing maps the vectors to buckets and stores the          seek, so there is no difference between non-sequential access and
+buckets on disk; orchestration includes dependency graph construc-       sequential access. The performance of DiskJoin only degrades when
+tion, task reordering, and cache management; execution loads the         the file system is so fragmented that many extents of the disk index
+buckets from disk and performs computations. The results show            have size less than 4KB, causing read amplification.
+that the orchestration part, which encompasses our main optimiza-        Cross-join. We evaluate DiskJoin’s performance in cross-joins us-
+tions, has a small overhead (around 5% of the total execution time).     ing two disjoint subsets of the Deep1B dataset [5], of sizes 50M
+For Deep100M, the time spent on bucketing exceeds that of execu-         and 100M, respectively. The distance threshold and memory con-
+tion. This is because most vector pairs are filtered out, leaving a      straint are set to their default values. As discussed in Section 3,
+small number of candidate pairs for verification.                        DiskJoin may conduct cross-join in two ways: (1) reordering the
+Randomness sensitivity. The execution time and recall depend on          larger dataset and caching the smaller dataset or (2) the reverse.
+the quality of vector bucketization, which involves random center        These are denoted as DiskJoin1 and DiskJoin2 in Figure 13, respec-
+selection. To evaluate the robustness of this randomness, we repeat      tively. Both DiskJoin1 and DiskJoin2 outperform DiskANN consis-
+the experiment on the 10M subset of BigANN100M fifty times. The          tently, across different target recalls, and DiskJoin1 runs slightly
+results show that performance is robust: the mean recall is 0.903        faster than DiskJoin2. This is expected, as DiskJoin1 has shorter
+with a standard deviation of 0.005, and the mean execution time          disk read time compared with DiskJoin 2 (Section 3).
+is 276.02 seconds with a standard deviation of 12.62 seconds. This        Key takeaway: The execution time of DiskJoin is consistently 2-3
+low variance indicates that the performance is largely insensitive        orders of magnitude lower than DiskANN, and remains robust
+to the specific random centers chosen.                                    across varied configuration settings.
+Stress-testing DiskJoin. DiskJoin assumes ideal sequential disk
+layout. In practice, however, files may split into non-contiguous        6.4               Performance Analysis
+pieces (extents) as the file system ages, a phenomenon known as file     In this section, we profile the execution statistics of DiskANN and
+system fragmentation. In this experiment, we stress-test DiskJoin        DiskJoin to understand their performance. For all experiments, we
+under such degraded disk conditions. We create three 100GB file          use the default configurations (Section 6.1).
+systems, fill them with small files of varying sizes (16KB, 128KB and       Figure 15 breaks down the execution time of DiskANN and
+1024KB), and then delete a random subset of files to simulate frag-      DiskJoin into IO time and computation time. Note that the lengths
+mentation. Figure 14 shows the execution time of DiskJoin and the        of the bars do not indicate the execution time of the solutions,
+number of extents in the disk index file on the 10M size subset of Bi-   instead, we report the execution time next to the bars. The results
+gANN100M across different fragmentation level. As fragmentation          show that disk IO takes up about 70% of DiskANN’s execution
+increases, the disk index is broken into more extents, increasing        time on both datasets, while DiskJoin only spends 21.4% and 16.7%
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                                                       Conference’17, July 2017, Washington, DC, USA
+
+
+                           Disk time          Computation time                                                                                  Total time   Disk time
+                                                                                                              2
+
+
+
+
+                                                                                           Normalized Time
+                                                                                                                     1.83                                        1.79
+                                                                                                                              1.63                                          1.55
+                                                                                                             1.5
+
+
+
+
+                                                                             Deep100M
+                                                                                                                                                               65.35%
+DiskANN                      74.1%                          25.9%   273175                                          60.56%                1.0                                         1.0
+                                                                                                              1              53.45%                                        51.09%
+                                                                                                             0.5                         26.0%                                      21.52%
+DiskJoin     21.4%                         78.6%                    474.5
+                                                                                                              0
+                                                                                                               1
+
+
+
+
+                                                                                          Cache hit rate
+                                                                                                                                          0.76                                       0.79
+                                     Execution time (s)                                                      0.75
+
+
+
+
+                                                                             BigANN100M
+                                                                                                              0.5
+DiskANN                    71.8%                            28.2%   130107                                                                                                  0.28
+                                                                                                             0.25              0.2
+                                                                                                                     0.03                                        0.05
+                                                                                                               0
+DiskJoin    16.7%                         83.3%                     1184.5                                           LRU     +Belady    +Reorder                 LRU       +Belady +Reorder
+                                                                                                                             Deep100M                                    BigANN100M
+                                                                                          Figure 17: Normalized execution time and cache hit rate when
+                                     Execution time (s)
+                                                                                          enabling the task orchestration optimizations.
+Figure 15: Breaking down the execution time for DiskJoin and
+DiskANN. Note that the lengths of the bar do not correspond                               well empirically, demonstrating significant gains in efficiency with
+to total time.                                                                            only minimal impact on recall (approximately a 0.1% reduction in
+                                                                                          our experiments). Below, we present an experimental analysis of
+                                                                                          how these optimizations influence efficiency.
+                                      Total (GB)    Useful (GB)     Amp.
+                                                                                             First, we consider our task orchestration optimizations. In Fig-
+       Deep
+                    DiskJoin              181              180.3    1.0039                ure 17, the method annotated as LRU disables both cache optimiza-
+                    DiskANN             139,485           19,427     7.18                 tions, instead using the node id to determine task order and LRU
+      BigANN
+                    DiskJoin              265              264.3    1.0026                as the cache replacement policy; +Belady uses Belady’s algorithm
+                    DiskANN             115,854           19,118     6.06                 instead of LRU; finally, +Reorder augments +Belady with task re-
+                                                                                          ordering. For ease of comparison, we normalize the execution time
+Figure 16: The disk traffic of DiskJoin and DiskANN. Amp. is
+                                                                                          results by the execution time of +Reorder, and report the percentage
+the ratio of total disk traffic over the useful disk traffic.
+                                                                                          of disk IO time within total execution time.
+of the execution time on disk IO respectively. Figure 16 further                             Both optimizations are effective at reducing the execution time
+explains this result, reporting the useful disk traffic against the                       of DiskJoin, as they improve the cache hit rate when accessing the
+total disk traffic for each approach (and their ratio, which is the                       buckets. When the two optimizations are disabled (LRU), disk IO
+read amplification). We see that DiskANN needs to read far more                           takes up more than half of the execution time, while disk IO is no
+data from the disk than DiskJoin. In particular, the average disk                         longer the bottleneck when the optimizations are used (+Reorder).
+read volume per vector is 1.4MB and 1.2MB for DiskANN while                               Task reordering is particularly effective in improving the cache hit
+DiskJoin only reads 1.9KB and 2.8KB. The large difference between                         rate: When both optimizations are used, the cache hit rate is above
+DiskJoin’s and DiskANN’s disk traffic (i.e., over 400x) is due to three                   75% for both datasets. This is remarkable because the memory size
+reasons. (1) DiskANN suffers from severe read amplification due to                        is only 10% of the dataset size. The cache hit rate of LRU is below
+the random access pattern of the proximity graph index. As a result,                      10% because similarity join does not have popular buckets, and a
+only a small fraction of the data read from disk is actually used by                      bucket that was recently accessed may not be accessed in the future,
+DiskANN. In contrast, DiskJoin enjoys nearly no disk amplification                        which constitutes an adversarial case for LRU.
+thanks to its bucket-based block disk access. (2) DiskJoin optimizes                         Finally, we examine the effect of candidate bucket pruning, which
+for disk I/O through its dynamic memory cache and task reordering.                        directly influences the average degree of the bucket dependency
+(3) DiskJoin’s pruning technique successfully prunes most of the                          graph—and consequently, the computational and disk I/O costs.
+candidate pairs, further reducing the disk I/O time and computation                       Figure 18 reports the number of candidate vector pairs2 and exe-
+time, which we will show later.                                                           cution time under varying distance thresholds. The results show
+   Overall, these results indicate that, with our optimizations, disk                     that pruning leads to a substantial reduction in both the number
+IO is no longer the bottleneck for vector similarity joins. Instead,                      of candidate vector pairs and execution time across all settings.
+the limiting factor becomes computation and the execution time of                         For example, on the Deep100M dataset with a threshold of 0.05,
+DiskJoin can be further accelerated by using GPUs for computation.                        pruning reduces the number of candidate pairs from 5.59 × 1012
+ Key takeaway: Remarkably, DiskJoin achieves nearly 0 read am-                            to 1.81 × 1011 , resulting in a drop in execution time from 5188.1
+ plification, eliminating disk IO as the bottleneck.                                      seconds to just 474.5 seconds. The trend holds for larger thresholds
+                                                                                          as well: at 0.09, pruning still reduces the execution time by nearly
+6.5     Effectiveness of DiskJoin Designs                                                 9× despite the increased candidate volume.
+In this section, we analyze the impact of our three optimizations:                                 Key takeaway: Our ablation study shows that all of DiskJoin’s
+cache management using Belady’s algorithm, task reordering, and                                    optimizations are useful in reducing disk access and runtime,
+candidate pruning. Cache management and task reordering pre-                                       with minimal impact on recall.
+serve the graph structure and thus do not reduce recall, while                            2 The number of candidate vector pairs is proportional to the number of candidate
+candidate pruning may affect recall, as it modifies the dependency                        buckets—both reflect the computational and I/O costs; we report the more fine-grained
+graph. However, despite its heuristic nature, pruning performs very                       statistic here.
+Conference’17, July 2017, Washington, DC, USA                                                                              Yanqi Chen, Xiao Yan, Alexandra Meliou, and Eric Lo
+
+
+                    Threshold         No. of candidates         Execution time (s)
+      Dataset                                                                              [15] Paolo Ciaccia, Marco Patella, Pavel Zezula, et al. 1997. M-tree: An efficient access
+                   (# neighbors)   w/o pruning w/ pruning     w/o pruning w/ pruning            method for similarity search in metric spaces. In Vldb, Vol. 97. 426–435.
+                      0.04 (50)    4.19 × 1012  1.12 × 1011       4,204        416         [16] Henrique B da Silva, Zenilton KG do Patrocínio, Guillaume Gravier, Laurent
+                      0.05 (100)   5.59 × 1012  1.81 × 1011       5,188        475
+     Deep100M                                                                                   Amsaleg, Arnaldo de A Araújo, and Silvio Jamil F Guimaraes. 2016. Near-duplicate
+                    0.065 (200)    7.31 × 1012  3.93 × 1011       7,671        620
+                                            12                                                  video detection based on an approximate similarity self-join strategy. In 14th
+                      0.09 (500)   9.66 × 10    1.14 × 1012     10,696       1,222
+                                            12                                                  International Workshop on Content-Based Multimedia Indexing. 1–6.
+                     8000 (50)     5.89 × 10    4.60 × 1011       8,235        861
+                                                                                           [17] Henrique B. da Silva, Zenilton K. G. do Patrocínio, Guillaume Gravier, Laurent
+                    10000 (100)    7.76 × 1012  7.78 × 1011       9,930      1,185
+    BigANN100M                                                                                  Amsaleg, Arnaldo de A. Araújo, and Silvio Jamil F. Guimarães. 2016. Near-
+                    12000 (200)    9.52 × 1012  1.26 × 1012     14,793       1,805
+                                                                                                duplicate video detection based on an approximate similarity self-join strategy.
+                    16000 (500)    1.28 × 1013  2.57 × 1012     20,813       3,654
+                                                                                                In CBMI. 1–6.
+                                                                                           [18] Akash Das Sarma, Yeye He, and Surajit Chaudhuri. 2014. Clusterjoin: A similarity
+Figure 18: Impact of candidate bucket pruning on candidate                                      joins framework using map-reduce. Proceedings of the VLDB Endowment 7, 12
+count and execution time. Pruning yields significant perfor-                                    (2014), 1059–1070.
+mance gains across all thresholds.
+                                                                                           [19] Jeffrey Dean and Sanjay Ghemawat. 2008. MapReduce: simplified data processing
+                                                                                                on large clusters. Commun. ACM 51, 1 (2008), 107–113.
+                                                                                           [20] Vlastislav Dohnal, Claudio Gennaro, and Pavel Zezula. 2003. Similarity join in
+                                                                                                metric spaces using ed-index. In Database and Expert Systems Applications: 14th
+7     Conclusion                                                                                International Conference. 484–493.
+                                                                                           [21] Cong Fu, Chao Xiang, Changxu Wang, and Deng Cai. [n.d.]. Fast Approximate
+In this paper, we study the problem of similarity-based self-join over                          Nearest Neighbor Search With The Navigating Spreading-out Graph. Proceedings
+high-dimensional, large vector datasets. We focus on disk-based                                 of the VLDB Endowment 12, 5 ([n. d.]).
+solutions and observe that disk access dominates the execution time                        [22] Junhao Gan, Jianlin Feng, Qiong Fang, and Wilfred Ng. 2012. Locality-sensitive
+                                                                                                hashing scheme based on dynamic collision counting. In Proceedings of 2012
+of disk-based vector similarity join due to read amplification and                              International Conference on Management of Data. 541–552.
+repetitive data access. We propose DiskJoin, which relies on smart                         [23] Jianyang Gao, Yutong Gou, Yuexuan Xu, Yongyi Yang, Cheng Long, and Raymond
+bucket-wise processing of SSJs to reduce disk IO. DiskJoin carefully                            Chi-Wing Wong. 2024. Practical and Asymptotically Optimal Quantization of
+                                                                                                High-Dimensional Vectors in Euclidean Space for Approximate Nearest Neighbor
+manages the in-memory data cache to improve cache hit rate, which                               Search. arXiv preprint arXiv:2409.09913 (2024).
+is achieved by ordering the tasks for temporal locality and using                          [24] Georgios Giannikis, Gustavo Alonso, and Donald Kossmann. 2012. SharedDB:
+                                                                                                killing one thousand queries with one stone. Proc. VLDB Endow. 5, 6 (Feb. 2012),
+a cache eviction policy that fully utilizes data access information.                            526–537. https://doi.org/10.14778/2168651.2168654
+Through extensive experiments, we show that DiskJoin achieves                              [25] Siddharth Gollapudi, Neel Karia, Varun Sivashankar, Ravishankar Krishnaswamy,
+consistently 2-3 orders-of-magnitude improvement in execution                                   Nikit Begwani, Swapnil Raz, Yiyong Lin, Yin Zhang, Neelam Mahapatro, Premku-
+                                                                                                mar Srinivasan, et al. 2023. Filtered-diskann: Graph algorithms for approximate
+time and all but eliminates read amplification. Remarkably, DiskJoin                            nearest neighbor search with filters. In Proceedings of the ACM Web Conference
+removes disk access as a bottleneck in vector similarity self-join.                             2023. 3406–3416.
+                                                                                           [26] Fabian Groh, Lukas Ruppert, Patrick Wieschollek, and Hendrik PA Lensch. 2022.
+                                                                                                Ggnn: Graph-based gpu nearest neighbor search. IEEE Transactions on Big Data
+References                                                                                      9, 1 (2022), 267–279.
+                                                                                           [27] Bikash Gyawali, Lucas Anastasiou, and Petr Knoth. 2020. Deduplication of
+ [1] Amro Abbas, Kushal Tirumala, Dániel Simig, Surya Ganguli, and Ari S Mor-                   Scholarly Documents using Locality Sensitive Hashing and Word Embeddings.
+     cos. 2023. Semdedup: Data-efficient learning at web-scale through semantic                 In Proceedings of the Twelfth Language Resources and Evaluation Conference.
+     deduplication. arXiv preprint arXiv:2303.09540 (2023).                                     Marseille, France, 901–910.
+ [2] Cecilia Aguerrebere, Ishwar Singh Bhati, Mark Hildebrand, Mariano Tepper, and         [28] Qiang Huang, Jianlin Feng, Yikai Zhang, Qiong Fang, and Wilfred Ng. 2015.
+     Theodore Willke. 2023. Similarity Search in the Blink of an Eye with Compressed            Query-aware locality-sensitive hashing for approximate nearest neighbor search.
+     Indices. Proceedings of the VLDB Endowment 16, 11 (2023), 3433–3446.                       Proceedings of the VLDB Endowment 9, 1 (2015), 1–12.
+ [3] Arvind Arasu, Venkatesh Ganti, and Raghav Kaushik. 2006. Efficient exact set-         [29] Piotr Indyk and Rajeev Motwani. 1998. Approximate nearest neighbors: towards
+     similarity joins. In Proceedings of the 32nd international conference on Very large        removing the curse of dimensionality. In Proceedings of the thirtieth annual ACM
+     data bases. 918–929.                                                                       symposium on Theory of computing. 604–613.
+ [4] Jane Arthurs, Sophia Drakopoulou, and Alessandro Gandini. 2018. Researching           [30] Vipin Jain, BINDOO Malviya, and SATYENDRA Arya. 2021. An overview of
+     youtube. Convergence 24, 1 (2018), 3–15.                                                   electronic commerce (e-Commerce). The journal of contemporary issues in business
+ [5] Artem Babenko and Victor Lempitsky. 2016. Efficient indexing of billion-scale              and government 27, 3 (2021), 665–670.
+     datasets of deep descriptors. In Proceedings of the IEEE Conference on Computer       [31] Herve Jegou, Matthijs Douze, and Cordelia Schmid. 2010. Product quantization
+     Vision and Pattern Recognition. 2055–2063.                                                 for nearest neighbor search. IEEE transactions on pattern analysis and machine
+ [6] Laszlo A. Belady. 1966. A Study of Replacement Algorithms for Virtual-Storage              intelligence 33, 1 (2010), 117–128.
+     Computer. IBM Syst. J. 5, 2 (1966), 78–101.                                           [32] Dmitri V Kalashnikov. 2013. Super-EGO: fast multi-dimensional similarity join.
+ [7] Christian Böhm, Bernhard Braunmüller, Florian Krebs, and Hans-Peter Kriegel.               The VLDB Journal 22, 4 (2013), 561–585.
+     2001. Epsilon grid order: An algorithm for the similarity join on massive high-       [33] Dmitri V Kalashnikov and Sunil Prabhakar. 2007. Fast similarity join for multi-
+     dimensional data. ACM SIGMOD Record 30, 2 (2001), 379–388.                                 dimensional data. Information Systems 32, 1 (2007), 160–177.
+ [8] Panagiotis Bouros, Shen Ge, and Nikos Mamoulis. 2012. Spatio-textual similarity       [34] Saim Khan, Somesh Singh, Harsha Vardhan Simhadri, Jyothi Vedurada, et al.
+     joins. Proceedings of the VLDB Endowment 6, 1 (2012), 1–12.                                2024. Bang: Billion-scale approximate nearest neighbor search using a single
+ [9] Thomas Brinkhoff, Hans-Peter Kriegel, and Bernhard Seeger. 1993. Efficient                 gpu. arXiv preprint arXiv:2401.11324 (2024).
+     processing of spatial joins using R-trees. ACM SIGMOD Record 22, 2 (1993),            [35] Douwe Kiela and Léon Bottou. 2014. Learning image embeddings using convolu-
+     237–246.                                                                                   tional neural networks for improved multi-modal semantics. In Proceedings of
+[10] Varun Chandola, Arindam Banerjee, and Vipin Kumar. 2009. Anomaly detection:                the 2014 Conference on empirical methods in natural language processing. 36–45.
+     A survey. ACM computing surveys (CSUR) 41, 3 (2009), 1–58.                            [36] Juhwan Kim, Jongseon Seo, Jonghyeok Park, Sang-Won Lee, Hongchan Roh,
+[11] Varun Chandola, Arindam Banerjee, and Vipin Kumar. 2009. Anomaly detection:                and Hyungmin Cho. 2022. ES4D: Accelerating Exact Similarity Search for High-
+     A survey. ACM computing surveys 41, 3 (2009), 1–58.                                        Dimensional Vectors via Vector Slicing and In-SSD Computation. In 2022 IEEE
+[12] Surajit Chaudhuri, Venkatesh Ganti, and Raghav Kaushik. 2006. A primitive                  40th International Conference on Computer Design (ICCD). 298–306. https://doi.
+     operator for similarity joins in data cleaning. In 22nd International Conference on        org/10.1109/ICCD56317.2022.00051
+     Data Engineering. 5–5.                                                                [37] Aditya Kusupati, Gantavya Bhatt, Aniket Rege, Matthew Wallingford, Aditya
+[13] Gang Chen, Keyu Yang, Lu Chen, Yunjun Gao, Baihua Zheng, and Chun Chen.                    Sinha, Vivek Ramanujan, William Howard-Snyder, Kaifeng Chen, Sham Kakade,
+     2016. Metric similarity joins using MapReduce. IEEE Transactions on Knowledge              Prateek Jain, et al. 2022. Matryoshka representation learning. Advances in Neural
+     and Data Engineering 29, 3 (2016), 656–669.                                                Information Processing Systems 35 (2022), 30233–30249.
+[14] Qi Chen, Bing Zhao, Haidong Wang, Mingqin Li, Chuanjie Liu, Zengzhong                 [38] Hangyu Li, Sarana Nutanong, Hong Xu, Foryu Ha, et al. 2018. C2Net: A network-
+     Li, Mao Yang, and Jingdong Wang. 2021. Spann: Highly-efficient billion-scale               efficient approach to collision counting LSH similarity join. IEEE Transactions on
+     approximate nearest neighborhood search. Advances in Neural Information                    Knowledge and Data Engineering 31, 3 (2018), 423–436.
+     Processing Systems 34 (2021), 5199–5212.
+DiskJoin: Large-scale Vector Similarity Join with SSD                                                                         Conference’17, July 2017, Washington, DC, USA
+
+
+[39] Chen Luo and Anshumali Shrivastava. 2018. Arrays of (locality-sensitive) count            Update Strategy for Graph-Based ANN Index. arXiv preprint arXiv:2503.00402
+     estimators (ace) anomaly detection on the edge. In Proceedings of the 2018 World          (2025).
+     Wide Web Conference. 1439–1448.                                                      [63] Minjia Zhang and Yuxiong He. 2019. Grip: Multi-store capacity-optimized high-
+[40] Yu A Malkov and Dmitry A Yashunin. 2018. Efficient and robust approximate                 performance nearest neighbor search for vector search engine. In Proceedings of
+     nearest neighbor search using hierarchical navigable small world graphs. IEEE             the 28th ACM International Conference on Information and Knowledge Management.
+     transactions on pattern analysis and machine intelligence 42, 4 (2018), 824–836.          1673–1682.
+[41] Javier Vargas Munoz, Marcos A Gonçalves, Zanoni Dias, and Ricardo da S Torres.       [64] Zili Zhang, Chao Jin, Linpeng Tang, Xuanzhe Liu, and Xin Jin. 2023. Fast, Approx-
+     2019. Hierarchical clustering-based graphs for large scale approximate nearest            imate Vector Queries on Very Large Unstructured Datasets. In 20th Symposium
+     neighbor search. Pattern Recognition 96 (2019), 106970.                                   on Networked Systems Design and Implementation. 995–1011.
+[42] Usman Naseem, Imran Razzak, Katarzyna Musial, and Muhammad Imran. 2020.              [65] Weijie Zhao, Shulong Tan, and Ping Li. 2020. Song: Approximate nearest neighbor
+     Transformer based deep intelligent contextual embedding for twitter sentiment             search on gpu. In 2020 IEEE 36th International Conference on Data Engineering
+     analysis. Future Generation Computer Systems 113 (2020), 58–69.                           (ICDE). IEEE, 1033–1044.
+[43] Jianbin Qin, Wei Wang, Yifei Lu, Chuan Xiao, and Xuemin Lin. 2011. Efficient         [66] Chaoji Zuo, Miao Qiao, Wenchao Zhou, Feifei Li, and Dong Deng. 2024. SeRF: seg-
+     exact edit similarity query processing with the asymmetric signature scheme. In           ment graph for range-filtering approximate nearest neighbor search. Proceedings
+     Proceedings of 2011 International Conference on Management of data. 1033–1044.            of the ACM on Management of Data 2, 1 (2024), 1–26.
+[44] Chuitian Rong, Wei Lu, Xiaoli Wang, Xiaoyong Du, Yueguo Chen, and An-
+     thony KH Tung. 2012. Efficient and scalable processing of string similarity join.
+     IEEE Transactions on Knowledge and Data Engineering 25, 10 (2012), 2217–2230.
+[45] Viktor Sanca and Anastasia Ailamaki. 2024. Efficient Data Access Paths for Mixed
+     Vector-Relational Search. In Proceedings of the 20th International Workshop on
+     Data Management on New Hardware. 1–9.
+[46] Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross
+     Wightman, Mehdi Cherti, Theo Coombes, Aarush Katta, Clayton Mullis, Mitchell
+     Wortsman, et al. 2022. Laion-5b: An open large-scale dataset for training next
+     generation image-text models. Advances in Neural Information Processing Systems
+     35 (2022), 25278–25294.
+[47] Aditi Singh, Suhas Jayaram Subramanya, Ravishankar Krishnaswamy, and Har-
+     sha Vardhan Simhadri. 2021. Freshdiskann: A fast and accurate graph-based ann
+     index for streaming similarity search. arXiv preprint arXiv:2105.09613 (2021).
+[48] Suhas Jayaram Subramanya, Devvrit, Harsha Vardhan Simhadri, Ravishankar
+     Krishnaswamy, and Rohan Kadekodi. 2019. DiskANN: Fast Accurate Billion-point
+     Nearest Neighbor Search on a Single Node. In Advances in Neural Information
+     Processing Systems. 13748–13758.
+[49] Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir
+     Anguelov, Dumitru Erhan, Vincent Vanhoucke, and Andrew Rabinovich. 2015.
+     Going deeper with convolutions. In Proceedings of the IEEE conference on computer
+     vision and pattern recognition. 1–9.
+[50] Bing Tian, Haikun Liu, Zhuohui Duan, Xiaofei Liao, Hai Jin, and Yu Zhang. 2024.
+     Scalable billion-point approximate nearest neighbor search using { SmartSSDs } .
+     In 2024 USENIX Annual Technical Conference (USENIX ATC 24). 1135–1150.
+[51] Flavian Vasile, Elena Smirnova, and Alexis Conneau. 2016. Meta-prod2vec:
+     Product embeddings using side-information for recommendation. In Proceedings
+     of the 10th ACM conference on recommender systems. 225–232.
+[52] Hanli Wang, Fengkuangtian Zhu, Bo Xiao, Lei Wang, and Yu-Gang Jiang. 2015.
+     GPU-based MapReduce for large-scale near-duplicate video retrieval. Multimedia
+     Tools and Applications 74 (2015), 10515–10534.
+[53] Jiannan Wang, Guoliang Li, and Jianhua Feng. 2012. Can we beat the prefix
+     filtering? An adaptive framework for similarity join and search. In Proceedings of
+     2012 International Conference on Management of Data. 85–96.
+[54] Mengzhao Wang, Lingwei Lv, Xiaoliang Xu, Yuxiang Wang, Qiang Yue, and
+     Jiongkang Ni. 2023. An efficient and robust framework for approximate near-
+     est neighbor search with attribute constraint. Advances in Neural Information
+     Processing Systems 36 (2023), 15738–15751.
+[55] Mengzhao Wang, Weizhi Xu, Xiaomeng Yi, Songlin Wu, Zhangyang Peng, Xi-
+     angyu Ke, Yunjun Gao, Xiaoliang Xu, Rentong Guo, and Charles Xie. 2024.
+     Starling: An I/O-Efficient Disk-Resident Graph Index Framework for High-
+     Dimensional Vector Similarity Search on Data Segment. Proceedings of the ACM
+     on Management of Data 2, 1 (2024), 1–27.
+[56] Ye Wang, Ahmed Metwally, and Srinivasan Parthasarathy. 2013. Scalable all-pairs
+     similarity search in metric spaces. In 19th International Conference on Knowledge
+     Discovery and Data Mining. 829–837.
+[57] Hao Wei, Jeffrey Xu Yu, Can Lu, and Xuemin Lin. 2016. Speedup Graph Process-
+     ing by Graph Ordering. In Proceedings of the 2016 International Conference on
+     Management of Data. 1813–1828.
+[58] Xiao Wu, Alexander G Hauptmann, and Chong-Wah Ngo. 2007. Practical elimi-
+     nation of near-duplicates from web video search. In Proceedings of the 15th ACM
+     international conference on Multimedia. 218–227.
+[59] Xiao Wu, Chong-Wah Ngo, Alexander G Hauptmann, and Hung-Khoon Tan.
+     2009. Real-time near-duplicate elimination for web video search with content
+     and context. IEEE Transactions on Multimedia 11, 2 (2009), 196–207.
+[60] Chuan Xiao, Wei Wang, and Xuemin Lin. 2008. Ed-join: an efficient algorithm for
+     similarity joins with edit distance constraints. Proceedings of the VLDB Endowment
+     1, 1 (2008), 933–944.
+[61] Chenyun Yu, Sarana Nutanong, Hangyu Li, Cong Wang, and Xingliang Yuan.
+     2016. A generic method for accelerating LSH-based similarity join processing.
+     IEEE Transactions on Knowledge and Data Engineering 29, 4 (2016), 712–726.
+[62] Song Yu, Shengyuan Lin, Shufeng Gong, Yongqing Xie, Ruicheng Liu, Yijie Zhou,
+     Ji Sun, Yanfeng Zhang, Guoliang Li, and Ge Yu. 2025. A Topology-Aware Localized
+

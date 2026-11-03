@@ -1,0 +1,24 @@
+--- /tmp/opencode/hnswalg.h.orig	2026-11-02 21:32:18.999134677 +0800
++++ hnswalg.h	2026-11-02 21:32:19.026134760 +0800
+@@ -261,8 +261,19 @@
+                 tableint candidate_id = *(datal + j);
+ //                    if (candidate_id == 0) continue;
+ #ifdef USE_SSE
+-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
+-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                // [GATE5A] diagnostic guard (isolated patch, NOT reference
++                // behaviour): the prefetch operands below read *(datal+j+1),
++                // one tableint PAST the linklist when j+1==size. For level>=1
++                // nodes the linklist is its own malloc block of
++                // size_links_per_element_*level+1 bytes, so a FULL (sz==maxM_)
++                // linklist read 3 bytes past the block (ASan abort, real-data
++                // build; see GATE5A_REPORT). The guard keeps the pre-read
++                // in-bounds; _mm_prefetch is a pure hint, so behaviour is
++                // unchanged (verified: outputs byte-identical to r1_default).
++                if (j + 1 < size) {
++                    _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
++                    _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
++                }
+ #endif
+                 if (visited_array[candidate_id] == visited_array_tag) continue;
+                 visited_array[candidate_id] = visited_array_tag;

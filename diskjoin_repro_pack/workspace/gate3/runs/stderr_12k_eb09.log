@@ -1,0 +1,2 @@
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=459 bucket_sum=12000 n=12000
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/runs/pairs_12k_eb09.txt pairs=3594000 threads=4

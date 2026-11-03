@@ -1,0 +1,72 @@
+{
+ "name": "p1_omp1",
+ "n": 4000,
+ "d": 16,
+ "radius": 0.2,
+ "all_unordered_pairs": 7998000,
+ "gt_pairs": 297600,
+ "gt_density": 0.037209302325581395,
+ "dist_comp": 1833576,
+ "comps_per_gt": 6.161209677419355,
+ "comps_per_tp": 9.642837984948645,
+ "invalid_candidate_fraction": 0.8962960902629615,
+ "TP": 190149,
+ "FP": 0,
+ "FN": 107451,
+ "recall": 0.6389415322580645,
+ "precision": 1.0,
+ "found_duplicates": 0,
+ "found_illegal_lines": 0,
+ "bucket_size_dist": {
+  "count": 120,
+  "min": 4,
+  "p25": 25,
+  "p50": 36,
+  "p75": 44,
+  "p90": 48,
+  "max": 69,
+  "mean": 33.333333333333336
+ },
+ "bucket_empty": 0,
+ "bucket_max_points": 69,
+ "task_edge_count": 1484,
+ "task_self_loops": 120,
+ "task_outdeg_dist": {
+  "count": 120,
+  "min": 1,
+  "p25": 7,
+  "p50": 12,
+  "p75": 18,
+  "p90": 21,
+  "max": 24,
+  "mean": 12.366666666666667
+ },
+ "task_indeg_dist": {
+  "count": 120,
+  "min": 1,
+  "p25": 5,
+  "p50": 9,
+  "p75": 17,
+  "p90": 28,
+  "max": 65,
+  "mean": 12.366666666666667
+ },
+ "true_neighbour_deg_dist": {
+  "count": 4000,
+  "min": 1,
+  "p25": 70,
+  "p50": 118,
+  "p75": 192,
+  "p90": 301,
+  "max": 1072,
+  "mean": 148.8
+ },
+ "screens": {
+  "gt_positive": true,
+  "gt_density_in_0.1_20pct": true,
+  "dist_comp_gt_tp": true,
+  "invalid_candidates_ge_5pct": true,
+  "both_similar_and_dissimilar_pairs": true
+ },
+ "screen_pass": true
+}

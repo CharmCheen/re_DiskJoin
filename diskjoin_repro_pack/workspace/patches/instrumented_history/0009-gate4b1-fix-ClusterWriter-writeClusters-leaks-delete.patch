@@ -1,0 +1,33 @@
+From f1ac471493542aa8c8705d3169513488d68ec60c Mon Sep 17 00:00:00 2001
+From: gate4b1 <gate4b1@local>
+Date: Mon, 2 Nov 2026 19:04:08 +0800
+Subject: [PATCH 09/11] gate4b1: fix ClusterWriter::writeClusters leaks
+ (delete[] data_buf/buffer at scope exit; Gate 4B-0 LSan evidence retained in
+ logs/)
+
+---
+ lib/ClusterIO.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+index 0801962..5f3e46d 100644
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -108,6 +108,14 @@ struct ClusterWriter {
+         for (size_t i = 0; i < cluster_num; i++) {
+             radii[i] = sqrt(radii[i]);
+         }
++        // [GATE4B1] minimal leak fix: `buffer` (new char[cluster_num *
++        // buffer_size]) and `data_buf` (new float[batch_size * d]) were
++        // allocated at the top of writeClusters and never released
++        // (Gate 4B-0 LeakSanitizer evidence: direct leaks of 430080 + 256 B
++        // on p3-small). Matching deletes at scope exit; no other logic
++        // changes.
++        delete[] data_buf;
++        delete[] buffer;
+     }
+ 
+     void writeMetadata(std::vector<std::vector<size_t>>& assignment) {
+-- 
+2.34.1
+

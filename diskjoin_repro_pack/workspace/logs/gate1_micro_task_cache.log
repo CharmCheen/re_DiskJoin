@@ -1,0 +1,4 @@
+original_belady    cache_misses=5 hits=1
+original_lru       cache_misses=6 hits=0
+reordered_belady   cache_misses=4 hits=2
+reordered_lru      cache_misses=4 hits=2

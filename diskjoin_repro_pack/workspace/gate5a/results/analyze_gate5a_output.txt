@@ -1,0 +1,54 @@
+## Ground truth (exact integer brute force, m=272, thr=73984)
+- endpoints: 201 (200 sampled + vector 0); |N(0)|=3 (config gt)
+- endpoints with empty neighbourhood (excluded from recall ratios): 55
+- endpoint-level GT pair incidences: 30531
+- deduplicated GT pairs touching E: 30492
+
+## Runs
+- r1_default: build=2.1513s search=5.53653s recall=0.666667 | task_total=13011 hit=7819 miss=5192 evict=3437 reject=1727 | dist_comp=154113552
+- r2_identity: build=2.34468s search=7.09066s recall=0.666667 | task_total=13011 hit=3959 miss=9052 evict=3805 reject=5219 | dist_comp=154113600
+- r3_gorder_lru_forced: build=2.18298s search=6.36281s recall=0.666667 | task_total=13011 hit=5714 miss=7297 evict=7269 reject=0 | dist_comp=154113552
+- r4_gorder_belady_forced: build=2.28951s search=5.6833s recall=0.666667 | task_total=13011 hit=7796 miss=5215 evict=5187 reject=0 | dist_comp=154113552
+- r5_default_asan: build=Nones search=Nones recall=None | task_total=None hit=None miss=None evict=None reject=None | dist_comp=None | ASAN ABORT: heap-buffer-overflow in hnswlib searchBaseLayer (build phase)
+- r6_default_asan_patched: build=4.56959s search=9.719710000000001s recall=0.666667 | task_total=13011 hit=7819 miss=5192 evict=3437 reject=1727 | dist_comp=154113552
+- v0: build=0.0566524s search=0.07686960000000001s recall=0.3 | task_total=1484 hit=1312 miss=172 evict=92 reject=18 | dist_comp=1833576
+
+## Sampled recall (r1_default; exact GT, strict <)
+- pairs dumped: 3855811 (distinct 3855811, duplicated lines 0)
+- endpoint-level pooled recall: 23354/30531 = 0.764927  Wilson95% [0.760138, 0.769650]
+- per-endpoint recall over 146 endpoints with GT>0: min=0.0000 median=0.5865 mean=0.5213 max=1.0000
+- endpoints with recall==0: 25; ==1: 11
+- false-positive pair incidences (found partner not in exact GT): 0 (expect 0)
+- pair-level (dedup) recall: 23328/30492 = 0.765053  Wilson95% [0.760261, 0.769778]  FP pairs: 0
+- vector 0: GT=[2, 93937, 95491] found=[93937, 95491] -> in-binary count=2 (stderr sampled_count=2, config gt=3, printed recall=0.666667)
+
+## Cross-run invariance (r1..r4)
+- knn.txt r1 vs r2_identity: IDENTICAL
+- knn.txt r1 vs r3_gorder_lru_forced: IDENTICAL
+- knn.txt r1 vs r4_gorder_belady_forced: IDENTICAL
+- pairs.txt r1 vs r2_identity: IDENTICAL (lines=3855811, not-in-r1=0)
+- pairs.txt r1 vs r3_gorder_lru_forced: IDENTICAL (lines=3855811, not-in-r1=0)
+- pairs.txt r1 vs r4_gorder_belady_forced: IDENTICAL (lines=3855811, not-in-r1=0)
+- r6 (ASan + prefetch guard) vs r1: knn/tasks/pairs/trace byte-identity: ALL IDENTICAL
+- v0 (synthetic p1, gate5a binary) vs gate4b1 frozen p1_default: ALL 4 DUMPS BYTE-IDENTICAL
+
+## Cache mechanism verification (lockstep trace replay)
+- r1_default policy=C: replay MATCHES (hit=7819/7819 miss=5192/5192 admit=28/28 evict=3437/3437 reject=1727/1727 acc_mis=0 type_mis=0 victim_mis=0 victim_equiv=102)
+- r2_identity policy=C: replay MATCHES (hit=3959/3959 miss=9052/9052 admit=28/28 evict=3805/3805 reject=5219/5219 acc_mis=0 type_mis=0 victim_mis=0 victim_equiv=25)
+- r3_gorder_lru_forced policy=D: replay MATCHES (hit=5714/5714 miss=7297/7297 admit=28/28 evict=7269/7269 reject=0/0 acc_mis=0 type_mis=0 victim_mis=0 victim_equiv=0)
+- r4_gorder_belady_forced policy=A: replay MATCHES (hit=7796/7796 miss=5215/5215 admit=28/28 evict=5187/5187 reject=0/0 acc_mis=0 type_mis=0 victim_mis=0 victim_equiv=241)
+- read_calls == miss for r1-r4: OK
+
+## O_DIRECT IO recompute (r1): effective 286884352 vs 286884352; requested 305594368 vs 305594368
+
+## LRU accounting (r1 access sequence, cap=28)
+- accesses=13011 distinct=1000 cold(first)=1000 repeat=12011 sd>=cap=6297
+- cold + #(sd>=cap) = 7297 vs r3 lru_forced miss = 7297 (MATCH)
+- gorder sequence: interslot overlap mean=4.858; sd_median=31 sd_mean=164.9
+
+## Task graph (r1): task_total=13011 upper_triangle_ok=1 perm_ok=1 empty_tasks=0 bucket_sum=100000 | gorder: window=2 insertions=1000 window_removals=998 perm_ok=1
+
+## Problems
+- none
+
+results written to /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/results/runs_summary.tsv, recall_summary.tsv

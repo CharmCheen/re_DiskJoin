@@ -1,0 +1,10 @@
+[gate4a-writer] cluster_num=120 d=16 budget_bytes=322122 buffer_size=2688 buffer_vectors=42 total_buffer_bytes=322560 min_ok=1
+[0.0335322 s] Build done
+[gate4a-gorder] n=120 n2=120 window=4 insertions=120 window_removals=116 perm_ok=1
+[gate4a-config] n=3000 d=16 cluster_num=120 max_points=80 budget_bytes=322122 length=1280 capacity_slots=62 K=24 window=4 window_lt_cluster_num=1 capacity_lt_cluster_num=1 writer_buffer_bytes=2688 writer_buffer_vectors=42 error_bound=0.1 radius=0.0625 task_num_total=470 max_task_num=10
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=470 bucket_sum=3000 n=3000
+[gate4a-cache] capacity_slots=62 length=1280 budget_bytes=322122 filled=62 total=470 hit=350 miss=120 admit=62 evict=48 reject=10
+recall = 1
+[gate3-stat] dist_comp=223500 sampled_count=149 gt=149
+[gate3] pair_dump=runs/w0_smallbudget_pairs.txt pairs=223500 threads=4
+[0.0810316 s] Join done

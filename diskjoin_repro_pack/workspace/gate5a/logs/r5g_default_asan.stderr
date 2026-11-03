@@ -1,0 +1,57 @@
+=================================================================
+==241057==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x5080000004f4 at pc 0x5bbdb3d72134 bp 0x7fff79de55b0 sp 0x7fff79de55a0
+READ of size 4 at 0x5080000004f4 thread T0
+    #0 0x5bbdb3d72133 in hnswlib::HierarchicalNSW<float>::searchBaseLayer(unsigned int, void const*, int) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:264
+    #1 0x5bbdb3d8de7d in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, int) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:1298
+    #2 0x5bbdb3d8f4da in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, bool) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:1014
+    #3 0x5bbdb3d51f2b in one_level_kmeans(ConfigReader) [clone ._omp_fn.0] /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/Kmeans.h:199
+    #4 0x756f5544aa15 in GOMP_parallel (/lib/x86_64-linux-gnu/libgomp.so.1+0x14a15)
+    #5 0x5bbdb3d31370 in one_level_kmeans(ConfigReader) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/Kmeans.h:197
+    #6 0x5bbdb3d151d6 in DiskJoin::build(ConfigReader) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/DiskJoin.h:17
+    #7 0x5bbdb3d151d6 in main /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/main.cpp:9
+    #8 0x756f54229d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #9 0x756f54229e3f in __libc_start_main_impl ../csu/libc-start.c:392
+    #10 0x5bbdb3d22774 in _start (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/build/asan_g/main+0x1b774)
+
+0x5080000004f5 is located 0 bytes to the right of 85-byte region [0x5080000004a0,0x5080000004f5)
+allocated by thread T0 here:
+    #0 0x756f54ab4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x5bbdb3d8e21f in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, int) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:1259
+    #2 0x5bbdb3d8f4da in hnswlib::HierarchicalNSW<float>::addPoint(void const*, unsigned long, bool) /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:1014
+    #3 0x5bbdb3d51f73 in one_level_kmeans(ConfigReader) [clone ._omp_fn.0] /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/Kmeans.h:199
+    #4 0x756f5544aa15 in GOMP_parallel (/lib/x86_64-linux-gnu/libgomp.so.1+0x14a15)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/instrumented/DiskJoin/expr/../lib/../utils/../lib/hnswlib/hnswalg.h:264 in hnswlib::HierarchicalNSW<float>::searchBaseLayer(unsigned int, void const*, int)
+Shadow bytes around the buggy address:
+  0x0a107fff8040: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 01 fa
+  0x0a107fff8050: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 01 fa
+  0x0a107fff8060: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff8070: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff8080: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+=>0x0a107fff8090: fa fa fa fa 00 00 00 00 00 00 00 00 00 00[05]fa
+  0x0a107fff80a0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80b0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80c0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80d0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+  0x0a107fff80e0: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 05 fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==241057==ABORTING

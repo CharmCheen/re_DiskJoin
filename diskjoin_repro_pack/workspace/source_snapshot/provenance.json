@@ -1,0 +1,17 @@
+{
+  "reference_url": "https://github.com/iidyc/DiskJoin",
+  "commit_sha": "aa86151f97527b1dcf9a032d523c1d67d892454a",
+  "commit_date_utc": "2025-06-08T01:27:54Z",
+  "commit_message": "fix anonymous github issue caused by file names",
+  "tree_sha": "3042889c3dfd6b797a3516557c4ebace9c87fe3c",
+  "tarball_url": "https://codeload.github.com/iidyc/DiskJoin/tar.gz/aa86151f97527b1dcf9a032d523c1d67d892454a",
+  "tarball_sha256": "cac4c08ccd37caf4e46a6326a1c45ad84550ee087047100373fc56667d43bb58",
+  "retrieved_utc": "2026-11-02T04:03:14.387834+00:00",
+  "remote_blob_count": 42,
+  "local_blob_count": 42,
+  "missing": [],
+  "extra": [],
+  "mismatch": [],
+  "tree_matches_commit": true,
+  "verification_method": "GitHub git/trees API vs local git blob SHA1; git CLI not installed"
+}

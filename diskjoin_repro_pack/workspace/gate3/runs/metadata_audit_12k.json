@@ -1,0 +1,47 @@
+{
+  "meta_n": 12000,
+  "meta_d": 16,
+  "cluster_num": 120,
+  "max_points": 309,
+  "bucket_sizes_sum": 12000,
+  "sum_equals_n": true,
+  "max_bucket_size_matches": true,
+  "assignment_total": 12000,
+  "assignment_dup": 0,
+  "assignment_oob": 0,
+  "assignment_missing": 0,
+  "assignment_is_permutation": true,
+  "vectors_checked": 12000,
+  "vector_mismatch": 0,
+  "cluster_file_bytes": 768000,
+  "expected_bytes": 768000,
+  "first_mismatch": null,
+  "radius_mismatch": 0,
+  "first_radius_mismatch": null,
+  "centroid_not_a_data_vector": 0,
+  "centroid_not_in_own_bucket": 120,
+  "centroid_examples": [
+    [
+      "not_in_own_bucket",
+      0,
+      [
+        58
+      ]
+    ],
+    [
+      "not_in_own_bucket",
+      1,
+      [
+        103
+      ]
+    ],
+    [
+      "not_in_own_bucket",
+      2,
+      [
+        168
+      ]
+    ]
+  ]
+}
+METADATA_AUDIT PASS

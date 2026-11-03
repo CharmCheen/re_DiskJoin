@@ -1,0 +1,55 @@
+[gate4a-writer] cluster_num=120 d=16 budget_bytes=429496 buffer_size=3584 buffer_vectors=56 total_buffer_bytes=430080 min_ok=1
+[gate4a-gorder] n=120 n2=120 window=4 insertions=120 window_removals=116 perm_ok=1
+[gate4b0] order=default window=4 window_default=4
+[gate4a-config] n=4000 d=16 cluster_num=120 max_points=108 budget_bytes=429496 length=1728 capacity_slots=62 K=24 window=4 window_lt_cluster_num=1 capacity_lt_cluster_num=1 writer_buffer_bytes=3584 writer_buffer_vectors=56 error_bound=0.1 radius=0.2 task_num_total=1685 max_task_num=24
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=1685 bucket_sum=4000 n=4000
+[gate4b1] policy=lru_forced capacity=62 capacity_default=62
+=================================================================
+==217431==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x519000080170 at pc 0x626b2f3e94b8 bp 0x7ffd6cd54bd0 sp 0x7ffd6cd54bc0
+READ of size 8 at 0x519000080170 thread T0
+    #0 0x626b2f3e94b7 in main (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/build/asan/main+0x1a4b7)
+    #1 0x7f6d74a29d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #2 0x7f6d74a29e3f in __libc_start_main_impl ../csu/libc-start.c:392
+    #3 0x626b2f3ea274 in _start (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/build/asan/main+0x1b274)
+
+0x519000080170 is located 0 bytes to the right of 1008-byte region [0x51900007fd80,0x519000080170)
+allocated by thread T0 here:
+    #0 0x7f6d752b6357 in operator new[](unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:102
+    #1 0x626b2f43e7bd in Cache::Cache(unsigned long, unsigned long) (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/build/asan/main+0x6f7bd)
+    #2 0x626b2f3e1a46 in main (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/build/asan/main+0x12a46)
+    #3 0x7f6d74a29d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4b1/build/asan/main+0x1a4b7) in main
+Shadow bytes around the buggy address:
+  0x0a3280007fd0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280007fe0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280007ff0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280008000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280008010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x0a3280008020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00[fa]fa
+  0x0a3280008030: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0a3280008040: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0a3280008050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280008060: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0a3280008070: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==217431==ABORTING

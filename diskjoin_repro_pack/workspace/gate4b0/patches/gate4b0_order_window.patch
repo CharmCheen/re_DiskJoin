@@ -1,0 +1,85 @@
+From 7e4df0cb13353e6451b9b630692584a57260c7d9 Mon Sep 17 00:00:00 2001
+From: gate4b0 <gate4b0@local>
+Date: Mon, 2 Nov 2026 16:58:36 +0800
+Subject: [PATCH] gate4b0: env-gated GATE4B0_WINDOW +
+ GATE4B0_ORDER/GATE4B0_PERM_FILE overrides (applied after order_gorder;
+ default behaviour unchanged)
+
+---
+ lib/DiskJoin.h | 53 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 52 insertions(+), 1 deletion(-)
+
+diff --git a/lib/DiskJoin.h b/lib/DiskJoin.h
+index 44a8587..52c53d5 100644
+--- a/lib/DiskJoin.h
++++ b/lib/DiskJoin.h
+@@ -3,6 +3,7 @@
+ #include <algorithm>
+ #include <thread>
+ #include <cstdlib>
++#include <cstring>
+ #include <fstream>
+ #include <omp.h>
+ #include "Kmeans.h"
+@@ -106,7 +107,57 @@ struct DiskJoin {
+         }
+         size_t budget = (size_t)(config.mem_budget * 1024 * 1024 * 1024);
+         size_t length = cluster_reader.max_points * d;
+-        perm = order_gorder(shuffled_tasks, budget / 4 / length / config.K * 2);
++        // [GATE4B0] env-gated Gorder window override. The window normally
++        // derives from mem_budget (budget/4/length/K*2) - the SAME knob that
++        // sets the Cache capacity (budget/4/length) and the build-time
++        // ClusterWriter buffer. This override lets an experiment change the
++        // window alone without touching mem_budget, so cache conditions stay
++        // fixed. Unset -> original expression, reference behaviour unchanged.
++        size_t g4b0_window = budget / 4 / length / config.K * 2;
++        const char* g4b0_window_env = getenv("GATE4B0_WINDOW");
++        if (g4b0_window_env) g4b0_window = strtoull(g4b0_window_env, nullptr, 10);
++        perm = order_gorder(shuffled_tasks, g4b0_window);
++        // [GATE4B0] env-gated task-order override applied AFTER Gorder: perm
++        // maps bucket -> slot, so overriding perm only changes which slot a
++        // bucket is processed in (and hence the cache access sequence).
++        // Bucket labels, task lists, the upper-triangle filter and the join
++        // itself are untouched; the task multiset and the output pair set
++        // are invariant by construction.
++        //   GATE4B0_ORDER=identity -> slot i processes bucket i
++        //   GATE4B0_ORDER=file     -> perm read from GATE4B0_PERM_FILE
++        //   unset                  -> Gorder result (reference behaviour)
++        const char* g4b0_order = getenv("GATE4B0_ORDER");
++        if (g4b0_order && strcmp(g4b0_order, "identity") == 0) {
++            for (size_t i = 0; i < cluster_num; i++) perm[i] = i;
++        } else if (g4b0_order && strcmp(g4b0_order, "file") == 0) {
++            const char* g4b0_perm_file = getenv("GATE4B0_PERM_FILE");
++            if (!g4b0_perm_file) {
++                std::cerr << "[gate4b0] GATE4B0_ORDER=file requires GATE4B0_PERM_FILE\n";
++                exit(1);
++            }
++            std::ifstream g4b0_perm_in(g4b0_perm_file);
++            if (!g4b0_perm_in) {
++                std::cerr << "[gate4b0] cannot open GATE4B0_PERM_FILE=" << g4b0_perm_file << "\n";
++                exit(1);
++            }
++            std::vector<char> g4b0_seen(cluster_num, 0);
++            for (size_t i = 0; i < cluster_num; i++) {
++                if (!(g4b0_perm_in >> perm[i]) || perm[i] >= cluster_num || g4b0_seen[perm[i]]) {
++                    std::cerr << "[gate4b0] GATE4B0_PERM_FILE invalid at entry " << i << "\n";
++                    exit(1);
++                }
++                g4b0_seen[perm[i]] = 1;
++            }
++        } else if (g4b0_order) {
++            std::cerr << "[gate4b0] unknown GATE4B0_ORDER=" << g4b0_order
++                      << " (expected identity|file)\n";
++            exit(1);
++        }
++        if (g4b0_order || g4b0_window_env) {
++            std::cerr << "[gate4b0] order=" << (g4b0_order ? g4b0_order : "default")
++                      << " window=" << g4b0_window
++                      << " window_default=" << (budget / 4 / length / config.K * 2) << "\n";
++        }
+         for (size_t i = 0; i < cluster_num; i++) {
+             reordered_tasks[perm[i]] = shuffled_tasks[i];
+             order[perm[i]] = i;
+-- 
+2.34.1
+

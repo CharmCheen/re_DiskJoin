@@ -1,0 +1,8 @@
+445749a90008b0429503fdafdc602167  gate4a/data/p1.fbin
+d6057dc07f748900e05576757b1926ca  gate4a/data/p3.fbin
+04042af9ce46c4e4a576caa312c9f592  gate4a/data/p1.clusters
+efc0685c3088e5391ed1189ef3c265b3  gate4a/data/p1.metadata
+aad03bc48263889644b188b28697a440  gate4a/data/p1.hnsw
+1fbfd9ea8e08caacd5700b9eb403594d  gate4a/data/p3.clusters
+8623902c7441f855cb9e140ea30738c4  gate4a/data/p3.metadata
+0c5bf739e189cfb19b3511042f2e05d3  gate4a/data/p3.hnsw

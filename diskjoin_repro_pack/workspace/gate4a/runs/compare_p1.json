@@ -1,0 +1,21 @@
+{
+  "n": 4000,
+  "radius": 0.2,
+  "gt_pairs": 297600,
+  "gt_illegal_lines": 0,
+  "gt_duplicates": 0,
+  "found_pairs": 190050,
+  "found_illegal_lines": 0,
+  "found_duplicates": 0,
+  "TP": 190050,
+  "FP": 0,
+  "FN": 107550,
+  "recall": 0.6386088709677419,
+  "precision": 1.0
+}
+sample FN (in GT, not in output):
+  (0,40) sq_l2=0.16775377 <  radius=0.20000000
+  (0,240) sq_l2=0.16101473 <  radius=0.20000000
+  (0,640) sq_l2=0.18777365 <  radius=0.20000000
+  (0,720) sq_l2=0.13375420 <  radius=0.20000000
+  (0,760) sq_l2=0.18311324 <  radius=0.20000000

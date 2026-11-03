@@ -1,0 +1,3 @@
+metric	k	n	rate	wilson_lo	wilson_hi
+endpoint_level	23354	30531	0.764927	0.760138	0.769650
+pair_level	23328	30492	0.765053	0.760261	0.769778

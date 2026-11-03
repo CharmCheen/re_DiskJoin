@@ -1,0 +1,8 @@
+Fetching read-only reference from GitHub (pinned)...
+Cloning into '/home/qch/DiskJoin/diskjoin_repro_pack/reference/DiskJoin'...
+HEAD is now at aa86151 fix anonymous github issue caused by file names
+REFERENCE VERIFIED: aa86151f97527b1dcf9a032d523c1d67d892454a
+PAPER VERIFIED: /home/qch/DiskJoin/diskjoin_repro_pack/paper/DiskJoin_arXiv_2508.18494v2.pdf
+
+REFERENCE SHA: aa86151f97527b1dcf9a032d523c1d67d892454a
+ACM VoR: https://doi.org/10.1145/3769780

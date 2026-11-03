@@ -1,0 +1,46 @@
+[gate4a-gorder] n=60 n2=60 window=3 insertions=60 window_removals=57 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=3 insertions=60 window_removals=57 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=30 insertions=60 window_removals=30 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=30 insertions=60 window_removals=30 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=100 insertions=60 window_removals=0 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=100 insertions=60 window_removals=0 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=0 insertions=60 window_removals=59 perm_ok=1
+[gate4a-gorder] n=60 n2=60 window=0 insertions=60 window_removals=59 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=4 insertions=64 window_removals=60 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=4 insertions=64 window_removals=60 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=8 insertions=64 window_removals=56 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=8 insertions=64 window_removals=56 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=16 insertions=64 window_removals=48 perm_ok=1
+[gate4a-gorder] n=64 n2=64 window=16 insertions=64 window_removals=48 perm_ok=1
+[gate4a-gorder] n=50 n2=50 window=2 insertions=50 window_removals=48 perm_ok=1
+[gate4a-gorder] n=50 n2=50 window=2 insertions=50 window_removals=48 perm_ok=1
+[gate4a-gorder] n=50 n2=50 window=10 insertions=50 window_removals=40 perm_ok=1
+[gate4a-gorder] n=50 n2=50 window=10 insertions=50 window_removals=40 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=1 insertions=80 window_removals=79 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=1 insertions=80 window_removals=79 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=5 insertions=80 window_removals=75 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=5 insertions=80 window_removals=75 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=20 insertions=80 window_removals=60 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=20 insertions=80 window_removals=60 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=79 insertions=80 window_removals=1 perm_ok=1
+[gate4a-gorder] n=80 n2=80 window=79 insertions=80 window_removals=1 perm_ok=1
+[gate4a-gorder] n=1 n2=1 window=0 insertions=1 window_removals=0 perm_ok=1
+[gate4a-gorder] n=1 n2=1 window=0 insertions=1 window_removals=0 perm_ok=1
+[gate4a-gorder] n=30 n2=30 window=7 insertions=30 window_removals=23 perm_ok=1
+[gate4a-gorder] n=30 n2=30 window=7 insertions=30 window_removals=23 perm_ok=1
+[gorder-test] chain            n= 60 window=   3 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=119 => PASS
+[gorder-test] chain            n= 60 window=  30 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=119 => PASS
+[gorder-test] chain            n= 60 window= 100 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=119 => PASS
+[gorder-test] chain            n= 60 window=   0 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=119 => PASS
+[gorder-test] blocks8          n= 64 window=   4 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=288 => PASS
+[gorder-test] blocks8          n= 64 window=   8 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=288 => PASS
+[gorder-test] blocks8          n= 64 window=  16 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=288 => PASS
+[gorder-test] star             n= 50 window=   2 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=99 => PASS
+[gorder-test] star             n= 50 window=  10 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=99 => PASS
+[gorder-test] random-dag       n= 80 window=   1 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=493 => PASS
+[gorder-test] random-dag       n= 80 window=   5 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=493 => PASS
+[gorder-test] random-dag       n= 80 window=  20 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=493 => PASS
+[gorder-test] random-dag       n= 80 window=  79 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=493 => PASS
+[gorder-test] single           n=  1 window=   0 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=1 => PASS
+[gorder-test] all-self         n= 30 window=   7 perm_ok=1 inv_ok=1 head_ok=1 upper_ok=1 edges_ok=1 det_ok=1 edges=30 => PASS
+GORDER_TEST PASS

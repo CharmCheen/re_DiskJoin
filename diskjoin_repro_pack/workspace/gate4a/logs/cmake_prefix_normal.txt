@@ -1,0 +1,43 @@
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/build/prefix_normal
+[ 50%] Building CXX object CMakeFiles/main.dir/expr/main.cpp.o
+In file included from /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/expr/../lib/Kmeans.h:6,
+                 from /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/expr/../lib/DiskJoin.h:8,
+                 from /home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/expr/main.cpp:2:
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/expr/../lib/ClusterIO.h: In member function ‘void ClusterWriter::writeClusters(std::vector<std::vector<long unsigned int> >&, float*, float)’:
+/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate4a/instrumented/DiskJoin/expr/../lib/ClusterIO.h:66:83: warning: format ‘%zu’ expects argument of type ‘size_t’, but argument 5 has type ‘double’ [-Wformat=]
+   66 |             fprintf(stderr, "[gate4a-writer] cluster_num=%zu d=%zu budget_bytes=%zu buffer_size=%zu buffer_vectors=%zu total_buffer_bytes=%zu min_ok=%d\n",
+      |                                                                                 ~~^
+      |                                                                                   |
+      |                                                                                   long unsigned int
+      |                                                                                 %f
+   67 |                     cluster_num, d, budget * (size_t)1024 * 1024 * 1024, buffer_size,
+      |                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+      |                                                                  |
+      |                                                                  double
+[100%] Linking CXX executable main
+[100%] Built target main

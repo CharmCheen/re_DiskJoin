@@ -1,0 +1,4 @@
+[0.0394823 s] Build done
+recall = 0.3
+[gate3] pair_dump=runs/pairs_p1_run3.txt pairs=190057 threads=4
+[0.0809972 s] Join done

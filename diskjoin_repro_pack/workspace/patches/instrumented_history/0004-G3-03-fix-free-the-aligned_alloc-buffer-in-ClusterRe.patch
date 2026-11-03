@@ -1,0 +1,29 @@
+From eafa7ae12c6a277bf829015370d70e0ff4a8f39d Mon Sep 17 00:00:00 2001
+From: gate4a-repro <gate4a@local>
+Date: Mon, 2 Nov 2026 15:17:46 +0800
+Subject: [PATCH 04/11] G3-03 fix: free() the aligned_alloc buffer in
+ ~ClusterReader (matches allocation family; read path semantics unchanged)
+
+---
+ lib/ClusterIO.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/lib/ClusterIO.h b/lib/ClusterIO.h
+index 5d83596..c63ec2e 100644
+--- a/lib/ClusterIO.h
++++ b/lib/ClusterIO.h
+@@ -216,6 +216,9 @@ struct ClusterReader {
+         fcluster.close();
+         fmeta.close();
+         close(cluster_fd);
+-        delete[] buffer;
++        // [GATE4A] G3-03 fix: buffer was allocated with aligned_alloc (POSIX),
++        // so it must be released with free(), not delete[] (ASan: alloc-
++        // dealloc-mismatch). Semantics of the read path are unchanged.
++        free(buffer);
+     }
+ };
+\ No newline at end of file
+-- 
+2.34.1
+

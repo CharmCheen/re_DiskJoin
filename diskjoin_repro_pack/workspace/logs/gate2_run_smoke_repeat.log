@@ -1,0 +1,27 @@
+Toy data checked: n=12000, d=16, sampled_gt=599
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/build
+Consolidate compiler generated dependencies of target main
+[100%] Built target main
+Run folder: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/runs/toy-65b1dv
+[0.0557985 s] Build done
+recall = 1
+[0.0964714 s] Join done
+{
+  "status": "PASS_SMOKE_ONLY",
+  "sampled_recall": 1.0,
+  "sampled_gt": 599,
+  "build_elapsed_seconds": 0.0557985,
+  "join_cumulative_elapsed_seconds": 0.0964714,
+  "warning": "Reference sampled recall uses IDs divisible by 100000. Not a full recall/quality proof."
+}
+Completed: /home/qch/DiskJoin/diskjoin_repro_pack/workspace/runs/toy-65b1dv

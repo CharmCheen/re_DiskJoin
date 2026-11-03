@@ -1,0 +1,104 @@
+diff -ruN '--exclude=.git' '--exclude=datasets' '--exclude=configs' '--exclude=scripts' '--exclude=utils' '--exclude=README.md' '--exclude=.gitignore' reference/DiskJoin/lib/DiskJoin.h workspace/instrumented/DiskJoin/lib/DiskJoin.h
+--- reference/DiskJoin/lib/DiskJoin.h	2026-11-02 12:13:01.357883453 +0800
++++ workspace/instrumented/DiskJoin/lib/DiskJoin.h	2026-11-02 12:22:23.241286830 +0800
+@@ -102,13 +102,45 @@
+ 
+         float io_size = 0;
+ 
++        size_t empty_tasks = 0;
++        for (size_t i = 0; i < cluster_num; i++) {
++            if (tasks[i].empty()) empty_tasks++;
++        }
++        std::cout << "[instr] bucket_graph: cluster_num=" << cluster_num
++                  << " task_num=" << task_num
++                  << " max_task_num=" << max_task_num
++                  << " empty_tasks=" << empty_tasks << "\n";
++
++        size_t dup = 0;
++        std::vector<size_t> seen(cluster_num, 0);
++        for (size_t i = 0; i < cluster_num; i++) {
++            size_t id = order[i];
++            if (id >= cluster_num) { dup++; continue; }
++            if (seen[id]) dup++;
++            else seen[id] = 1;
++        }
++        std::cout << "[instr] gorder: permutation_ok=" << (dup == 0)
++                  << " cluster_num=" << cluster_num
++                  << " order_first8=";
++        for (size_t i = 0; i < cluster_num && i < 8; i++) {
++            std::cout << order[i] << (i + 1 < cluster_num && i + 1 < 8 ? "," : "");
++        }
++        std::cout << "\n";
++
+         Cache cache(budget, length);
+         cache.init(reordered_tasks);
++        std::cout << "[instr] cache: init capacity_slots=" << cache.size
++                  << " bucket_length_floats=" << length
++                  << " mem_bytes=" << (cache.size * length * 4)
++                  << " budget_bytes=" << budget << "\n";
++
+         float sum = 0;
+         size_t count = 0;
+         float disk_time = 0;
+         float comp_time = 0;
+         float dist_comp = 0;
++        size_t io_count = 0;
++        size_t processed_buckets = 0;
+         for (size_t i = 0; i < cluster_num; i++) {
+             auto target_cluster = order[i];
+             auto& target_tasks = reordered_tasks[i];
+@@ -117,10 +149,12 @@
+                 if (!cache.find(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d)) {
+                     cluster_reader.posixDirectReadCluster(neighbor_cluster, data.data() + j * length);
+                     cache.push(neighbor_cluster, data.data() + j * length, cluster_reader.bucket_sizes[neighbor_cluster] * d);
++                    io_count++;
+                 }
+             }
+             
+             if (bucket_sizes[target_cluster] == 0) continue;
++            processed_buckets++;
+ #pragma omp parallel for schedule(dynamic) reduction(+:sum) reduction(+:count) reduction(+:dist_comp)
+             for (size_t j = 0; j < bucket_sizes[target_cluster]; j++) {
+                 auto id1 = assignment[target_cluster][j];
+@@ -153,6 +187,18 @@
+                 }
+             }
+         }
++        std::cout << "[instr] cache: accesses=" << cache.total
++                  << " hits=" << cache.hit
++                  << " misses=" << (cache.total - cache.hit)
++                  << " filled_slots=" << cache.filled
++                  << " capacity_slots=" << cache.size << "\n";
++        std::cout << "[instr] io: reads=" << io_count
++                  << " buckets_processed=" << processed_buckets
++                  << " candidate_pairs=" << task_num << "\n";
++        std::cout << "[instr] io_bytes: aligned=" << cluster_reader.total
++                  << " effective=" << cluster_reader.used << "\n";
++        std::cout << "[instr] compute: dist_comp=" << dist_comp
++                  << " sampled_matches=" << count << "\n";
+         std::cout << "recall = " << 1.0 * count / config.gt << "\n";
+     }
+ };
+diff -ruN '--exclude=.git' '--exclude=datasets' '--exclude=configs' '--exclude=scripts' '--exclude=utils' '--exclude=README.md' '--exclude=.gitignore' reference/DiskJoin/lib/Kmeans.h workspace/instrumented/DiskJoin/lib/Kmeans.h
+--- reference/DiskJoin/lib/Kmeans.h	2026-11-02 12:13:01.357883453 +0800
++++ workspace/instrumented/DiskJoin/lib/Kmeans.h	2026-11-02 12:22:46.650558482 +0800
+@@ -213,6 +213,19 @@
+             kmeans.add2choice(num, data_buffer.data(), ids, graph);
+         }
+     }
++    size_t nonempty_buckets = 0;
++    size_t max_bucket_size = 0;
++    size_t total_vectors = 0;
++    for (auto& bucket : kmeans.inverted_list_) {
++        if (!bucket.empty()) nonempty_buckets++;
++        if (bucket.size() > max_bucket_size) max_bucket_size = bucket.size();
++        total_vectors += bucket.size();
++    }
++    std::cout << "[instr] bucketization: cluster_num=" << cluster_num
++              << " nonempty_buckets=" << nonempty_buckets
++              << " max_bucket_size=" << max_bucket_size
++              << " total_vectors=" << total_vectors << "\n";
++
+     ClusterWriter cluster_writer(datafile, config.cluster_file, config.metadata_file);
+     cluster_writer.writeClusters(kmeans.inverted_list_, kmeans.centroids_.data(), config.mem_budget);
+     cluster_writer.writeMetadata(kmeans.inverted_list_);

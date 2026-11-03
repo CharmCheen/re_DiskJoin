@@ -1,0 +1,232 @@
+{
+ "p1": {
+  "missA": 174,
+  "missC": 172,
+  "n_chains": 7,
+  "chains": [
+   {
+    "positions": [
+     291,
+     295
+    ],
+    "initiator": {
+     "i": 291,
+     "incoming": 10,
+     "A_admitted_by_evicting": [
+      66
+     ],
+     "C_rejected_keeping": [
+      66
+     ]
+    },
+    "n_events": 5,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   },
+   {
+    "positions": [
+     526,
+     689
+    ],
+    "initiator": {
+     "i": 526,
+     "incoming": 2,
+     "A_admitted_by_evicting": [
+      105
+     ],
+     "C_rejected_keeping": [
+      105
+     ]
+    },
+    "n_events": 164,
+    "hitflag_diff_events": [
+     {
+      "i": 689,
+      "x": 105,
+      "hitA": false,
+      "hitC": true
+     }
+    ],
+    "delta_A_minus_C": 1
+   },
+   {
+    "positions": [
+     746,
+     750
+    ],
+    "initiator": {
+     "i": 746,
+     "incoming": 5,
+     "A_admitted_by_evicting": [
+      103
+     ],
+     "C_rejected_keeping": [
+      103
+     ]
+    },
+    "n_events": 5,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   },
+   {
+    "positions": [
+     828,
+     854
+    ],
+    "initiator": {
+     "i": 828,
+     "incoming": 14,
+     "A_admitted_by_evicting": [
+      30
+     ],
+     "C_rejected_keeping": [
+      30
+     ]
+    },
+    "n_events": 27,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   },
+   {
+    "positions": [
+     863,
+     875
+    ],
+    "initiator": {
+     "i": 863,
+     "incoming": 17,
+     "A_admitted_by_evicting": [
+      49
+     ],
+     "C_rejected_keeping": [
+      49
+     ]
+    },
+    "n_events": 13,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   },
+   {
+    "positions": [
+     883,
+     1163
+    ],
+    "initiator": {
+     "i": 883,
+     "incoming": 26,
+     "A_admitted_by_evicting": [
+      112
+     ],
+     "C_rejected_keeping": [
+      112
+     ]
+    },
+    "n_events": 281,
+    "hitflag_diff_events": [
+     {
+      "i": 1159,
+      "x": 112,
+      "hitA": false,
+      "hitC": true
+     }
+    ],
+    "delta_A_minus_C": 1
+   },
+   {
+    "positions": [
+     1217,
+     1483
+    ],
+    "initiator": {
+     "i": 1217,
+     "incoming": 76,
+     "A_admitted_by_evicting": [
+      50
+     ],
+     "C_rejected_keeping": [
+      50
+     ]
+    },
+    "n_events": 267,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   }
+  ]
+ },
+ "p3": {
+  "missA": 165,
+  "missC": 164,
+  "n_chains": 2,
+  "chains": [
+   {
+    "positions": [
+     439,
+     456
+    ],
+    "initiator": {
+     "i": 439,
+     "incoming": 40,
+     "A_admitted_by_evicting": [
+      82
+     ],
+     "C_rejected_keeping": [
+      82
+     ]
+    },
+    "n_events": 18,
+    "hitflag_diff_events": [],
+    "delta_A_minus_C": 0
+   },
+   {
+    "positions": [
+     532,
+     1684
+    ],
+    "initiator": {
+     "i": 532,
+     "incoming": 119,
+     "A_admitted_by_evicting": [
+      71
+     ],
+     "C_rejected_keeping": [
+      71
+     ]
+    },
+    "n_events": 1153,
+    "hitflag_diff_events": [
+     {
+      "i": 909,
+      "x": 71,
+      "hitA": false,
+      "hitC": true
+     },
+     {
+      "i": 970,
+      "x": 85,
+      "hitA": true,
+      "hitC": false
+     },
+     {
+      "i": 1112,
+      "x": 118,
+      "hitA": false,
+      "hitC": true
+     },
+     {
+      "i": 1494,
+      "x": 118,
+      "hitA": false,
+      "hitC": true
+     },
+     {
+      "i": 1555,
+      "x": 10,
+      "hitA": true,
+      "hitC": false
+     }
+    ],
+    "delta_A_minus_C": 1
+   }
+  ]
+ }
+}

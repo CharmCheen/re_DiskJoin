@@ -1,0 +1,21 @@
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/runs/pairs_3k_asan.txt pairs=223500 threads=4
+=================================================================
+==189481==ERROR: AddressSanitizer: alloc-dealloc-mismatch (malloc vs operator delete []) on 0x7dbb05061000
+    #0 0x7dbb052b6e57 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:163
+    #1 0x5d9f81df29a4 in ClusterReader::~ClusterReader() instrumented/DiskJoin/expr/../lib/ClusterIO.h:207
+    #2 0x5d9f81f01fed in DiskJoin::search(ConfigReader) instrumented/DiskJoin/expr/../lib/DiskJoin.h:216
+    #3 0x5d9f81dec174 in main instrumented/DiskJoin/expr/main.cpp:11
+    #4 0x7dbb04229d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #5 0x7dbb04229e3f in __libc_start_main_impl ../csu/libc-start.c:392
+    #6 0x5d9f81dc00e4 in _start (/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/build/main_asan+0x24d0e4)
+
+0x7dbb05061000 is located 0 bytes inside of 294912-byte region [0x7dbb05061000,0x7dbb050a9000)
+allocated by thread T0 here:
+    #0 0x7dbb052b5387 in __interceptor_aligned_alloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:192
+    #1 0x5d9f81e13c06 in ClusterReader::readMetaData() instrumented/DiskJoin/expr/../lib/ClusterIO.h:183
+    #2 0x5d9f81ef07d8 in DiskJoin::search(ConfigReader) instrumented/DiskJoin/expr/../lib/DiskJoin.h:22
+    #3 0x5d9f81dec174 in main instrumented/DiskJoin/expr/main.cpp:11
+    #4 0x7dbb04229d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+
+SUMMARY: AddressSanitizer: alloc-dealloc-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:163 in operator delete[](void*)
+==189481==HINT: if you don't care about these errors you may set ASAN_OPTIONS=alloc_dealloc_mismatch=0

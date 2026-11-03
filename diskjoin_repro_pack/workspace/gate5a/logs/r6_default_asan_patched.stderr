@@ -1,0 +1,8 @@
+[gate4a-writer] cluster_num=1000 d=128 budget_bytes=5120000 buffer_size=5120 buffer_vectors=10 total_buffer_bytes=5120000 min_ok=1
+[gate4a-gorder] n=1000 n2=1000 window=2 insertions=1000 window_removals=998 perm_ok=1
+[gate4a-config] n=100000 d=128 cluster_num=1000 max_points=348 budget_bytes=5120000 length=44544 capacity_slots=28 K=24 window=2 window_lt_cluster_num=1 capacity_lt_cluster_num=1 writer_buffer_bytes=5120 writer_buffer_vectors=10 error_bound=0.1 radius=73984 task_num_total=13011 max_task_num=24
+[gate3-inv] perm_ok=1 empty_tasks=0 head_mismatch=0 self_missing=0 upper_triangle_ok=1 task_total=13011 bucket_sum=100000 n=100000
+[gate4a-cache] capacity_slots=28 length=44544 budget_bytes=5120000 filled=28 total=13011 hit=7819 miss=5192 admit=28 evict=3437 reject=1727
+[gate4b1-io] read_calls=5192 effective_bytes=286884352 requested_aligned_bytes=305594368 page_size=4096
+[gate3-stat] dist_comp=154113552 sampled_count=2 gt=3
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate5a/runs/r6_default_asan_patched/pairs.txt pairs=3855811 threads=1

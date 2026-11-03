@@ -1,0 +1,8 @@
+{
+  "status": "PASS_SMOKE_ONLY",
+  "sampled_recall": 1.0,
+  "sampled_gt": 599,
+  "build_elapsed_seconds": 0.0560715,
+  "join_cumulative_elapsed_seconds": 0.0836922,
+  "warning": "Reference sampled recall uses IDs divisible by 100000. Not a full recall/quality proof."
+}

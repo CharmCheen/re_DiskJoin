@@ -1,0 +1,72 @@
+{
+ "name": "p2",
+ "n": 4000,
+ "d": 16,
+ "radius": 0.44,
+ "all_unordered_pairs": 7998000,
+ "gt_pairs": 2365253,
+ "gt_density": 0.29573055763940986,
+ "dist_comp": 2295930,
+ "comps_per_gt": 0.970691084632384,
+ "comps_per_tp": 2.310337263173148,
+ "invalid_candidate_fraction": 0.5671627619308951,
+ "TP": 993764,
+ "FP": 0,
+ "FN": 1371489,
+ "recall": 0.4201512480905848,
+ "precision": 1.0,
+ "found_duplicates": 0,
+ "found_illegal_lines": 0,
+ "bucket_size_dist": {
+  "count": 120,
+  "min": 2,
+  "p25": 19,
+  "p50": 33,
+  "p75": 50,
+  "p90": 59,
+  "max": 68,
+  "mean": 33.333333333333336
+ },
+ "bucket_empty": 0,
+ "bucket_max_points": 68,
+ "task_edge_count": 1534,
+ "task_self_loops": 120,
+ "task_outdeg_dist": {
+  "count": 120,
+  "min": 1,
+  "p25": 8,
+  "p50": 14,
+  "p75": 18,
+  "p90": 21,
+  "max": 24,
+  "mean": 12.783333333333333
+ },
+ "task_indeg_dist": {
+  "count": 120,
+  "min": 1,
+  "p25": 4,
+  "p50": 8,
+  "p75": 16,
+  "p90": 29,
+  "max": 89,
+  "mean": 12.783333333333333
+ },
+ "true_neighbour_deg_dist": {
+  "count": 4000,
+  "min": 16,
+  "p25": 659,
+  "p50": 1124,
+  "p75": 1634,
+  "p90": 2103,
+  "max": 3215,
+  "mean": 1182.6265
+ },
+ "screens": {
+  "gt_positive": true,
+  "gt_density_in_0.1_20pct": false,
+  "dist_comp_gt_tp": true,
+  "invalid_candidates_ge_5pct": true,
+  "both_similar_and_dissimilar_pairs": true
+ },
+ "screen_pass": false
+}

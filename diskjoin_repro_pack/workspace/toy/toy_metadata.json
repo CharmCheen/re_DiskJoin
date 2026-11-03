@@ -1,0 +1,13 @@
+{
+  "n": 12000,
+  "dimension": 16,
+  "classes": 20,
+  "epsilon": 0.25,
+  "radius_squared": 0.0625,
+  "gt_sampled": 599,
+  "sample_ids": [
+    0
+  ],
+  "seed": 283,
+  "note": "Reference counts only pairs incident to ids % 100000 == 0; this is a sampled GT."
+}

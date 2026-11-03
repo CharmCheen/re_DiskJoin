@@ -1,0 +1,1 @@
+[gate3] pair_dump=/home/qch/DiskJoin/diskjoin_repro_pack/workspace/gate3/runs/pairs_12k_run2.txt pairs=3594000 threads=4

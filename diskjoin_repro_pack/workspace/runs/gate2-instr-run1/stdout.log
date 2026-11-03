@@ -1,0 +1,11 @@
+[instr] bucketization: cluster_num=120 nonempty_buckets=120 max_bucket_size=309 total_vectors=12000
+[0.0580773 s] Build done
+[instr] bucket_graph: cluster_num=120 task_num=459 max_task_num=10 empty_tasks=0
+[instr] gorder: permutation_ok=1 cluster_num=120 order_first8=6,10,29,42,46,54,76,84
+[instr] cache: init capacity_slots=5429 bucket_length_floats=4944 mem_bytes=107363904 budget_bytes=107374184
+[instr] cache: accesses=459 hits=339 misses=120 filled_slots=120 capacity_slots=5429
+[instr] io: reads=120 buckets_processed=120 candidate_pairs=459
+[instr] io_bytes: aligned=1.25338e+06 effective=768000
+[instr] compute: dist_comp=3.594e+06 sampled_matches=599
+recall = 1
+[0.0875891 s] Join done
